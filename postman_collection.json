@@ -1,0 +1,184 @@
+{
+	"info": {
+		"_postman_id": "b3e91402-9901-4972-8822-bc5190a4211f",
+		"name": "Onboarding Clientes y Cuentas API (Con Temporizador 5s e Inactividad)",
+		"description": "Colección completa de Postman para probar el API RESTful de registro de clientes personas físicas, tabla de saldos, eliminación de VARCHAR (uso de TEXT), autenticación biométrica cifrada y control de sesión con temporizador de inactividad de 5 segundos (loggeado = true/false).",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Clientes",
+			"item": [
+				{
+					"name": "1. Registrar Nuevo Cliente (POST)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre\": \"Carlos\",\n  \"segundoNombre\": \"Alberto\",\n  \"apellidoPaterno\": \"Mendoza\",\n  \"apellidoMaterno\": \"Hernández\",\n  \"fechaNacimiento\": \"1992-08-24\",\n  \"curp\": \"MEHC920824HDFRMN09\",\n  \"rfc\": \"MEHC9208243A8\",\n  \"sexo\": \"MASCULINO\",\n  \"nacionalidad\": \"Mexicana\",\n  \"estadoCivil\": \"SOLTERO\",\n  \"correo\": \"carlos.mendoza@email.com\",\n  \"telefonoMovil\": \"5598765432\",\n  \"telefonoAlternativo\": \"5512344321\",\n  \"domicilio\": {\n    \"calle\": \"Av. Insurgentes Sur\",\n    \"numeroExterior\": \"456\",\n    \"numeroInterior\": \"Piso 8-B\",\n    \"colonia\": \"Roma Norte\",\n    \"municipio\": \"Cuauhtémoc\",\n    \"estado\": \"Ciudad de México\",\n    \"codigoPostal\": \"06700\",\n    \"pais\": \"México\"\n  },\n  \"laboral\": {\n    \"ocupacion\": \"Arquitecto de Software\",\n    \"empresa\": \"Sistemas Financieros MX\",\n    \"ingresoMensual\": 45000.00\n  },\n  \"seguridad\": {\n    \"username\": \"carlos_mendoza\",\n    \"password\": \"PasswordSeguro2026*\",\n    \"tipoBiometria\": \"HUELLA_DACTILAR\",\n    \"datosBiometricos\": \"FINGERPRINT-PATTERN-DATA-SAMPLE-99\"\n  },\n  \"saldoInicial\": 3500.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/clientes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clientes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Consultar Todos los Clientes (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/clientes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clientes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Consultar Cliente por ID (GET - Incluye loggeado true/false)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/clientes/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clientes",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Saldos y Cuentas Bancarias",
+			"item": [
+				{
+					"name": "1. Consultar Saldo Disponible y Contable (Tabla Saldos)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/cuentas/4819204812/saldo",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cuentas",
+								"4819204812",
+								"saldo"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Autenticación y Temporizador de Inactividad (5s)",
+			"item": [
+				{
+					"name": "1. Login Seguro (Pone loggeado = true)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"carlos_mendoza\",\n  \"password\": \"PasswordSeguro2026*\",\n  \"datosBiometricos\": \"FINGERPRINT-PATTERN-DATA-SAMPLE-99\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Consultar Estado de Sesión y Contador Inactividad (5s)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/estado/carlos_mendoza",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"estado",
+								"carlos_mendoza"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Logout (Pone loggeado = false)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/logout/carlos_mendoza",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"logout",
+								"carlos_mendoza"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8081",
+			"type": "string"
+		}
+	]
+}

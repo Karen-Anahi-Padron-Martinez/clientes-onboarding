@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Onboarding de Clientes | Banca Digital</title>
+    <!-- Google Fonts & FontAwesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --accent-primary: #38bdf8;
+            --accent-secondary: #818cf8;
+            --accent-gradient: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.25rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            background: var(--accent-gradient);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
+        }
+
+        .logo-text h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-text span {
+            font-size: 0.8rem;
+            color: var(--accent-primary);
+            font-weight: 500;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-danger {
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+        }
+
+        .btn-danger:hover {
+            background: rgba(248, 113, 113, 0.25);
+        }
+
+        main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            padding: 0.8rem 1.4rem;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+        }
+
+        .tab-btn.active {
+            color: var(--accent-primary);
+            border-bottom-color: var(--accent-primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Forms & Grid */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 1.8rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-main);
+        }
+
+        .card-title i {
+            color: var(--accent-primary);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .form-group label .required {
+            color: var(--danger);
+        }
+
+        .form-control {
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.7rem 1rem;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+        }
+
+        .form-section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--accent-primary);
+            margin: 1.5rem 0 1rem 0;
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Tables */
+        .table-responsive {
+            overflow-x: auto;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: #0f172a;
+            color: var(--text-muted);
+            padding: 1rem 1.2rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-main);
+        }
+
+        tr:hover td {
+            background: var(--bg-card-hover);
+        }
+
+        .badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-success { background: rgba(52, 211, 153, 0.15); color: var(--success); }
+        .badge-danger { background: rgba(248, 113, 113, 0.15); color: var(--danger); }
+        .badge-warning { background: rgba(251, 191, 36, 0.15); color: var(--warning); }
+
+        /* Search Filter Box */
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .search-input-group {
+            flex: 1;
+            min-width: 260px;
+            position: relative;
+        }
+
+        .search-input-group i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .search-input-group input {
+            padding-left: 2.8rem;
+            width: 100%;
+        }
+
+        /* Result Alert Boxes */
+        .alert {
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.9rem;
+        }
+
+        .alert-success { background: rgba(52, 211, 153, 0.15); border: 1px solid rgba(52, 211, 153, 0.3); color: var(--success); }
+        .alert-danger { background: rgba(248, 113, 113, 0.15); border: 1px solid rgba(248, 113, 113, 0.3); color: var(--danger); }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 2rem;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <div class="logo-icon">
+                <i class="fa-solid fa-building-columns"></i>
+            </div>
+            <div class="logo-text">
+                <h1>Sistema de Onboarding</h1>
+                <span>Sistema de Registro de Clientes Personas Físicas</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="/swagger-ui.html" target="_blank" class="btn btn-secondary">
+                <i class="fa-solid fa-code"></i> OpenAPI / Swagger
+            </a>
+            <a href="/h2-console" target="_blank" class="btn btn-secondary">
+                <i class="fa-solid fa-database"></i> H2 DB Console
+            </a>
+        </div>
+    </header>
+
+    <main>
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('registroTab')">
+                <i class="fa-solid fa-user-plus"></i> Nuevo Registro de Cliente
+            </button>
+            <button class="tab-btn" onclick="switchTab('consultasTab'); cargarClientes();">
+                <i class="fa-solid fa-users"></i> Directorio de Clientes
+            </button>
+            <button class="tab-btn" onclick="switchTab('cuentasTab'); cargarCuentas();">
+                <i class="fa-solid fa-wallet"></i> Cuentas Bancarias & Saldos
+            </button>
+            <button class="tab-btn" onclick="switchTab('authTab')">
+                <i class="fa-solid fa-fingerprint"></i> Autenticación Cifrada & Biometría
+            </button>
+        </div>
+
+        <div id="alertBox" class="alert" style="display: none;"></div>
+
+        <!-- TAB 1: REGISTRO DE CLIENTE -->
+        <div id="registroTab" class="tab-content active">
+            <form id="registroForm" onsubmit="registrarCliente(event)">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fa-solid fa-id-card"></i> Datos Personales
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Nombre <span class="required">*</span></label>
+                            <input type="text" id="nombre" class="form-control" placeholder="Ej. Juan" required minlength="2" maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label>Segundo Nombre (Opcional)</label>
+                            <input type="text" id="segundoNombre" class="form-control" placeholder="Ej. Carlos" maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label>Apellido Paterno <span class="required">*</span></label>
+                            <input type="text" id="apellidoPaterno" class="form-control" placeholder="Ej. Pérez" required minlength="2" maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label>Apellido Materno <span class="required">*</span></label>
+                            <input type="text" id="apellidoMaterno" class="form-control" placeholder="Ej. Gómez" required minlength="2" maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha de Nacimiento (&ge; 18 años) <span class="required">*</span></label>
+                            <input type="date" id="fechaNacimiento" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>CURP (18 caracteres) <span class="required">*</span></label>
+                            <input type="text" id="curp" class="form-control" placeholder="Ej. PEGJ900515HDFRMN01" required maxlength="18">
+                        </div>
+                        <div class="form-group">
+                            <label>RFC (12 o 13 caracteres) <span class="required">*</span></label>
+                            <input type="text" id="rfc" class="form-control" placeholder="Ej. PEGJ9005151A2" required maxlength="13">
+                        </div>
+                        <div class="form-group">
+                            <label>Sexo <span class="required">*</span></label>
+                            <select id="sexo" class="form-control" required>
+                                <option value="MASCULINO">MASCULINO</option>
+                                <option value="FEMENINO">FEMENINO</option>
+                                <option value="OTRO">OTRO</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nacionalidad <span class="required">*</span></label>
+                            <input type="text" id="nacionalidad" class="form-control" value="Mexicana" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Estado Civil <span class="required">*</span></label>
+                            <select id="estadoCivil" class="form-control" required>
+                                <option value="SOLTERO">SOLTERO / A</option>
+                                <option value="CASADO">CASADO / A</option>
+                                <option value="DIVORCIADO">DIVORCIADO / A</option>
+                                <option value="VIUDO">VIUDO / A</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Datos de Contacto -->
+                    <div class="form-section-title">
+                        <i class="fa-solid fa-address-book"></i> Datos de Contacto
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Correo Electrónico <span class="required">*</span></label>
+                            <input type="email" id="correo" class="form-control" placeholder="ejemplo@correo.com" required maxlength="100">
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono Móvil (10 dígitos) <span class="required">*</span></label>
+                            <input type="tel" id="telefonoMovil" class="form-control" placeholder="5512345678" required pattern="\d{10}">
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono Alternativo (10 dígitos - Opcional)</label>
+                            <input type="tel" id="telefonoAlternativo" class="form-control" placeholder="5587654321" pattern="(\d{10})?">
+                        </div>
+                    </div>
+
+                    <!-- Domicilio -->
+                    <div class="form-section-title">
+                        <i class="fa-solid fa-house"></i> Domicilio del Cliente
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Calle <span class="required">*</span></label>
+                            <input type="text" id="calle" class="form-control" placeholder="Av. Paseo de la Reforma" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Número Exterior <span class="required">*</span></label>
+                            <input type="text" id="numeroExterior" class="form-control" placeholder="123" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Número Interior (Opcional)</label>
+                            <input type="text" id="numeroInterior" class="form-control" placeholder="Piso 4, Dpto B">
+                        </div>
+                        <div class="form-group">
+                            <label>Colonia <span class="required">*</span></label>
+                            <input type="text" id="colonia" class="form-control" placeholder="Juárez" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Municipio / Alcaldía <span class="required">*</span></label>
+                            <input type="text" id="municipio" class="form-control" placeholder="Cuauhtémoc" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Estado <span class="required">*</span></label>
+                            <input type="text" id="estado" class="form-control" placeholder="Ciudad de México" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Código Postal (5 dígitos) <span class="required">*</span></label>
+                            <input type="text" id="codigoPostal" class="form-control" placeholder="06600" required pattern="\d{5}">
+                        </div>
+                        <div class="form-group">
+                            <label>País <span class="required">*</span></label>
+                            <input type="text" id="pais" class="form-control" value="México" required>
+                        </div>
+                    </div>
+
+                    <!-- Información Laboral y Cuenta -->
+                    <div class="form-section-title">
+                        <i class="fa-solid fa-briefcase"></i> Información Laboral y Saldo Inicial
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Ocupación <span class="required">*</span></label>
+                            <input type="text" id="ocupacion" class="form-control" placeholder="Ingeniero en Sistemas" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Empresa <span class="required">*</span></label>
+                            <input type="text" id="empresa" class="form-control" placeholder="Servicios Financieros SA" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Ingreso Mensual (MXN) (&gt; $0.00) <span class="required">*</span></label>
+                            <input type="number" id="ingresoMensual" class="form-control" placeholder="25000.00" step="0.01" min="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Saldo Inicial de Cuenta (MXN) (&ge; $0.00)</label>
+                            <input type="number" id="saldoInicial" class="form-control" placeholder="1000.00" step="0.01" min="0">
+                        </div>
+                    </div>
+
+                    <!-- Datos de Seguridad y Biometría -->
+                    <div class="form-section-title">
+                        <i class="fa-solid fa-user-shield"></i> Credenciales de Acceso y Captura Biométrica
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Nombre de Usuario <span class="required">*</span></label>
+                            <input type="text" id="username" class="form-control" placeholder="juan_perez" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Contraseña (Se encriptará con BCrypt) <span class="required">*</span></label>
+                            <input type="password" id="password" class="form-control" placeholder="••••••••" required minlength="8">
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Biometría <span class="required">*</span></label>
+                            <select id="tipoBiometria" class="form-control" required>
+                                <option value="HUELLA_DACTILAR">Huella Dactilar</option>
+                                <option value="RECONOCIMIENTO_FACIAL">Reconocimiento Facial</option>
+                                <option value="IRIS">Escaneo de Iris</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Plantilla Biométrica (Se cifrará con SHA-256) <span class="required">*</span></label>
+                            <input type="text" id="datosBiometricos" class="form-control" value="FINGERPRINT-PATTERN-HASH-778899" required>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 12px;">
+                        <button type="reset" class="btn btn-secondary">Limpiar Formulario</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-check"></i> Registrar Cliente y Asignar Cuenta
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- TAB 2: CONSULTA Y DIRECTORIO DE CLIENTES -->
+        <div id="consultasTab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-users"></i> Directorio y Búsquedas de Clientes
+                    </div>
+                    <div>
+                        <button class="btn btn-secondary" onclick="cargarClientes()">
+                            <i class="fa-solid fa-arrows-rotate"></i> Actualizar Listado
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="search-input-group">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="searchQuery" class="form-control" placeholder="Buscar por Nombre, CURP, RFC, Correo o Cuenta..." onkeyup="filtrarTablaClientes()">
+                    </div>
+                    <select id="filtroEstado" class="form-control" style="width: auto;" onchange="filtrarTablaClientes()">
+                        <option value="TODOS">Todos los clientes</option>
+                        <option value="ACTIVOS">Solo clientes activos</option>
+                    </select>
+                </div>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre Completo</th>
+                                <th>CURP</th>
+                                <th>RFC</th>
+                                <th>Correo / Teléfono</th>
+                                <th>Número Cuenta</th>
+                                <th>Saldo</th>
+                                <th>Estatus</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaClientesBody">
+                            <tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: CUENTAS BANCARIAS Y SALDOS -->
+        <div id="cuentasTab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-vault"></i> Cuentas Bancarias Registradas
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="searchCuentaNum" class="form-control" placeholder="Número de cuenta (10 dígitos)" style="width: 250px;">
+                        <button class="btn btn-primary" onclick="consultarSaldoEspecifico()">
+                            <i class="fa-solid fa-magnifying-glass-dollar"></i> Consultar Saldo
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID Cuenta</th>
+                                <th>Número de Cuenta</th>
+                                <th>Titular</th>
+                                <th>CURP Titular</th>
+                                <th>Saldo Disponible</th>
+                                <th>Estatus Cuenta</th>
+                                <th>Fecha Creación</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaCuentasBody">
+                            <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Cargando cuentas...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: AUTENTICACIÓN CIFRADA & BIOMETRÍA -->
+        <div id="authTab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-shield-halved"></i> Portal de Validación Cifrada y Biométrica
+                    </div>
+                </div>
+
+                <div class="form-grid" style="max-width: 600px; margin: 0 auto;">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Nombre de Usuario registrado</label>
+                        <input type="text" id="loginUsername" class="form-control" placeholder="juan_perez">
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Contraseña (Verificación BCrypt)</label>
+                        <input type="password" id="loginPassword" class="form-control" placeholder="••••••••">
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>O Plantilla Biométrica (Verificación Hash SHA-256)</label>
+                        <input type="text" id="loginBiometria" class="form-control" placeholder="FINGERPRINT-PATTERN-HASH-778899">
+                    </div>
+                    <div style="grid-column: 1 / -1; margin-top: 1rem;">
+                        <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="ejecutarLoginSeguro()">
+                            <i class="fa-solid fa-lock"></i> Autenticar Cliente
+                        </button>
+                    </div>
+                </div>
+
+                <div id="authResultBox" style="margin-top: 2rem; display: none;"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal Editar Cliente -->
+    <div id="editModal" class="modal-backdrop">
+        <div class="modal">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-user-pen"></i> Actualizar Cliente <span id="editClienteIdBadge" style="color: var(--accent-primary);"></span>
+                </div>
+                <button class="btn btn-secondary" onclick="cerrarModal()">&times;</button>
+            </div>
+            <form id="editForm" onsubmit="guardarEdicionCliente(event)">
+                <input type="hidden" id="editClienteId">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Nombre <span class="required">*</span></label>
+                        <input type="text" id="editNombre" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Segundo Nombre</label>
+                        <input type="text" id="editSegundoNombre" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Apellido Paterno <span class="required">*</span></label>
+                        <input type="text" id="editApellidoPaterno" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Apellido Materno <span class="required">*</span></label>
+                        <input type="text" id="editApellidoMaterno" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha Nacimiento <span class="required">*</span></label>
+                        <input type="date" id="editFechaNacimiento" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Correo Electrónico <span class="required">*</span></label>
+                        <input type="email" id="editCorreo" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Teléfono Móvil (10 dígitos) <span class="required">*</span></label>
+                        <input type="tel" id="editTelefonoMovil" class="form-control" required pattern="\d{10}">
+                    </div>
+                    <div class="form-group">
+                        <label>Ocupación <span class="required">*</span></label>
+                        <input type="text" id="editOcupacion" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Empresa <span class="required">*</span></label>
+                        <input type="text" id="editEmpresa" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ingreso Mensual <span class="required">*</span></label>
+                        <input type="number" id="editIngresoMensual" class="form-control" step="0.01" required>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let clientesGlobal = [];
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.currentTarget.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        function mostrarAlerta(mensaje, esError = false) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.className = esError ? 'alert alert-danger' : 'alert alert-success';
+            alertBox.innerHTML = `<i class="fa-solid ${esError ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i> ${mensaje}`;
+            alertBox.style.display = 'flex';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => { alertBox.style.display = 'none'; }, 6000);
+        }
+
+        async function registrarCliente(e) {
+            e.preventDefault();
+            const payload = {
+                nombre: document.getElementById('nombre').value,
+                segundoNombre: document.getElementById('segundoNombre').value || null,
+                apellidoPaterno: document.getElementById('apellidoPaterno').value,
+                apellidoMaterno: document.getElementById('apellidoMaterno').value,
+                fechaNacimiento: document.getElementById('fechaNacimiento').value,
+                curp: document.getElementById('curp').value.toUpperCase(),
+                rfc: document.getElementById('rfc').value.toUpperCase(),
+                sexo: document.getElementById('sexo').value,
+                nacionalidad: document.getElementById('nacionalidad').value,
+                estadoCivil: document.getElementById('estadoCivil').value,
+                correo: document.getElementById('correo').value.toLowerCase(),
+                telefonoMovil: document.getElementById('telefonoMovil').value,
+                telefonoAlternativo: document.getElementById('telefonoAlternativo').value || null,
+                domicilio: {
+                    calle: document.getElementById('calle').value,
+                    numeroExterior: document.getElementById('numeroExterior').value,
+                    numeroInterior: document.getElementById('numeroInterior').value || null,
+                    colonia: document.getElementById('colonia').value,
+                    municipio: document.getElementById('municipio').value,
+                    estado: document.getElementById('estado').value,
+                    codigoPostal: document.getElementById('codigoPostal').value,
+                    pais: document.getElementById('pais').value
+                },
+                laboral: {
+                    ocupacion: document.getElementById('ocupacion').value,
+                    empresa: document.getElementById('empresa').value,
+                    ingresoMensual: parseFloat(document.getElementById('ingresoMensual').value)
+                },
+                seguridad: {
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value,
+                    tipoBiometria: document.getElementById('tipoBiometria').value,
+                    datosBiometricos: document.getElementById('datosBiometricos').value
+                },
+                saldoInicial: document.getElementById('saldoInicial').value ? parseFloat(document.getElementById('saldoInicial').value) : null
+            };
+
+            try {
+                const response = await fetch('/api/clientes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (response.ok && result.exito) {
+                    mostrarAlerta(`¡Cliente ${result.datos.nombreCompleto} registrado con éxito! Número de Cuenta asignado: <strong>${result.datos.cuenta.numeroCuenta}</strong> con saldo $${result.datos.cuenta.saldo}`);
+                    document.getElementById('registroForm').reset();
+                } else {
+                    let msg = result.mensaje || 'Error en el registro';
+                    if (result.erroresValidacion) {
+                        msg += ': ' + Object.values(result.erroresValidacion).join(', ');
+                    }
+                    mostrarAlerta(msg, true);
+                }
+            } catch (err) {
+                mostrarAlerta('Error de conexión al servidor: ' + err.message, true);
+            }
+        }
+
+        async function cargarClientes() {
+            try {
+                const res = await fetch('/api/clientes');
+                const json = await res.json();
+                if (json.exito) {
+                    clientesGlobal = json.datos;
+                    renderTablaClientes(clientesGlobal);
+                }
+            } catch (err) {
+                mostrarAlerta('Error al cargar la lista de clientes', true);
+            }
+        }
+
+        function renderTablaClientes(lista) {
+            const tbody = document.getElementById('tablaClientesBody');
+            if (lista.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center;">No hay clientes registrados en el sistema</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = lista.map(c => `
+                <tr>
+                    <td><strong>#${c.id}</strong></td>
+                    <td>${c.nombreCompleto} <br><small style="color:var(--text-muted);">${c.edad} años</small></td>
+                    <td><code>${c.curp}</code></td>
+                    <td><code>${c.rfc}</code></td>
+                    <td>${c.correo}<br><small style="color:var(--text-muted);">${c.telefonoMovil}</small></td>
+                    <td><span class="badge badge-warning">${c.cuenta ? c.cuenta.numeroCuenta : 'N/A'}</span></td>
+                    <td><strong>$${c.cuenta ? c.cuenta.saldo.toFixed(2) : '0.00'}</strong></td>
+                    <td>
+                        <span class="badge ${c.activo ? 'badge-success' : 'badge-danger'}">
+                            ${c.activo ? 'ACTIVO' : 'INACTIVO'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem;" onclick="abrirModalEdicion(${c.id})"><i class="fa-solid fa-pen"></i></button>
+                        ${c.activo ? `<button class="btn btn-danger" style="padding: 0.3rem 0.6rem;" onclick="desactivarCliente(${c.id})"><i class="fa-solid fa-user-minus"></i></button>` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filtrarTablaClientes() {
+            const query = document.getElementById('searchQuery').value.toLowerCase();
+            const estado = document.getElementById('filtroEstado').value;
+
+            const filtrados = clientesGlobal.filter(c => {
+                const matchQuery = c.nombreCompleto.toLowerCase().includes(query) ||
+                                   c.curp.toLowerCase().includes(query) ||
+                                   c.rfc.toLowerCase().includes(query) ||
+                                   c.correo.toLowerCase().includes(query) ||
+                                   (c.cuenta && c.cuenta.numeroCuenta.includes(query));
+                const matchEstado = (estado === 'TODOS') || (estado === 'ACTIVOS' && c.activo);
+                return matchQuery && matchEstado;
+            });
+            renderTablaClientes(filtrados);
+        }
+
+        async function cargarCuentas() {
+            try {
+                const res = await fetch('/api/cuentas/activas');
+                const json = await res.json();
+                if (json.exito) {
+                    const tbody = document.getElementById('tablaCuentasBody');
+                    tbody.innerHTML = json.datos.map(cta => `
+                        <tr>
+                            <td>#${cta.id}</td>
+                            <td><code>${cta.numeroCuenta}</code></td>
+                            <td>${cta.clienteNombreCompleto}</td>
+                            <td><code>${cta.clienteCurp}</code></td>
+                            <td><strong style="color: var(--success);">$${cta.saldo.toFixed(2)}</strong></td>
+                            <td><span class="badge badge-success">${cta.estatus}</span></td>
+                            <td>${new Date(cta.fechaCreacion).toLocaleString()}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (err) {
+                mostrarAlerta('Error al cargar cuentas bancarias', true);
+            }
+        }
+
+        async function consultarSaldoEspecifico() {
+            const num = document.getElementById('searchCuentaNum').value.trim();
+            if (!num) return alert('Ingrese un número de cuenta');
+            try {
+                const res = await fetch(`/api/cuentas/${num}/saldo`);
+                const json = await res.json();
+                if (res.ok && json.exito) {
+                    alert(`INFORMACIÓN DE SALDO:\nCuenta: ${json.datos.numeroCuenta}\nTitular: ${json.datos.titularNombreCompleto}\nSaldo Disponible: $${json.datos.saldo}\nEstatus: ${json.datos.estatus}`);
+                } else {
+                    mostrarAlerta(json.mensaje || 'Cuenta no encontrada', true);
+                }
+            } catch (err) {
+                mostrarAlerta('Error de conexión', true);
+            }
+        }
+
+        async function desactivarCliente(id) {
+            if (!confirm('¿Está seguro de realizar la baja lógica de este cliente? La cuenta bancaria asociada cambiará a INACTIVA.')) return;
+            try {
+                const res = await fetch(`/api/clientes/${id}`, { method: 'DELETE' });
+                const json = await res.json();
+                if (res.ok) {
+                    mostrarAlerta('Baja lógica ejecutada correctamente.');
+                    cargarClientes();
+                } else {
+                    mostrarAlerta(json.mensaje, true);
+                }
+            } catch (err) {
+                mostrarAlerta('Error al realizar baja lógica', true);
+            }
+        }
+
+        function abrirModalEdicion(id) {
+            const c = clientesGlobal.find(item => item.id === id);
+            if (!c) return;
+            document.getElementById('editClienteId').value = c.id;
+            document.getElementById('editClienteIdBadge').innerText = `#${c.id} (${c.curp})`;
+            document.getElementById('editNombre').value = c.nombre;
+            document.getElementById('editSegundoNombre').value = c.segundoNombre || '';
+            document.getElementById('editApellidoPaterno').value = c.apellidoPaterno;
+            document.getElementById('editApellidoMaterno').value = c.apellidoMaterno;
+            document.getElementById('editFechaNacimiento').value = c.fechaNacimiento;
+            document.getElementById('editCorreo').value = c.correo;
+            document.getElementById('editTelefonoMovil').value = c.telefonoMovil;
+            document.getElementById('editOcupacion').value = c.laboral.ocupacion;
+            document.getElementById('editEmpresa').value = c.laboral.empresa;
+            document.getElementById('editIngresoMensual').value = c.laboral.ingresoMensual;
+
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function cerrarModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        async function guardarEdicionCliente(e) {
+            e.preventDefault();
+            const id = document.getElementById('editClienteId').value;
+            const c = clientesGlobal.find(item => item.id == id);
+
+            const payload = {
+                nombre: document.getElementById('editNombre').value,
+                segundoNombre: document.getElementById('editSegundoNombre').value || null,
+                apellidoPaterno: document.getElementById('editApellidoPaterno').value,
+                apellidoMaterno: document.getElementById('editApellidoMaterno').value,
+                fechaNacimiento: document.getElementById('editFechaNacimiento').value,
+                sexo: c.sexo,
+                nacionalidad: c.nacionalidad,
+                estadoCivil: c.estadoCivil,
+                correo: document.getElementById('editCorreo').value,
+                telefonoMovil: document.getElementById('editTelefonoMovil').value,
+                telefonoAlternativo: c.telefonoAlternativo,
+                domicilio: c.domicilio,
+                laboral: {
+                    ocupacion: document.getElementById('editOcupacion').value,
+                    empresa: document.getElementById('editEmpresa').value,
+                    ingresoMensual: parseFloat(document.getElementById('editIngresoMensual').value)
+                }
+            };
+
+            try {
+                const res = await fetch(`/api/clientes/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (res.ok && json.exito) {
+                    mostrarAlerta('Cliente actualizado con éxito.');
+                    cerrarModal();
+                    cargarClientes();
+                } else {
+                    mostrarAlerta(json.mensaje, true);
+                }
+            } catch (err) {
+                mostrarAlerta('Error al actualizar cliente', true);
+            }
+        }
+
+        async function ejecutarLoginSeguro() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const biometria = document.getElementById('loginBiometria').value;
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, datosBiometricos: biometria })
+                });
+                const json = await res.json();
+                const box = document.getElementById('authResultBox');
+                box.style.display = 'block';
+
+                if (res.ok && json.datos.autenticado) {
+                    box.className = 'alert alert-success';
+                    box.innerHTML = `
+                        <div>
+                            <h4><i class="fa-solid fa-circle-check"></i> ${json.datos.mensaje}</h4>
+                            <p><strong>Usuario:</strong> ${json.datos.username} | <strong>Titular:</strong> ${json.datos.clienteNombreCompleto}</p>
+                            <p><strong>Número de Cuenta:</strong> ${json.datos.numeroCuenta} | <strong>Token de Sesión Cifrado:</strong> <code>${json.datos.tokenSimulado}</code></p>
+                        </div>
+                    `;
+                } else {
+                    box.className = 'alert alert-danger';
+                    box.innerHTML = `<h4><i class="fa-solid fa-circle-xmark"></i> ${json.mensaje || 'Error de Autenticación'}</h4>`;
+                }
+            } catch (err) {
+                mostrarAlerta('Error en autenticación', true);
+            }
+        }
+    </script>
+</body>
+</html>

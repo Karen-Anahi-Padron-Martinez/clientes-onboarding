@@ -1,5 +1,6 @@
 package com.kapm.onboarding_clientes.model;
 
+import com.kapm.onboarding_clientes.model.catalogo.*;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -45,14 +46,17 @@ public class Cliente {
     @Column(nullable = false, unique = true, columnDefinition = "TEXT")
     private String rfc;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String sexo;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "sexo_id", referencedColumnName = "id", nullable = false)
+    private CatSexo sexo;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String nacionalidad;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "nacionalidad_id", referencedColumnName = "id", nullable = false)
+    private CatNacionalidad nacionalidad;
 
-    @Column(name = "estado_civil", nullable = false, columnDefinition = "TEXT")
-    private String estadoCivil;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "estado_civil_id", referencedColumnName = "id", nullable = false)
+    private CatEstadoCivil estadoCivil;
 
     // Datos de Contacto
     @Column(nullable = false, unique = true, columnDefinition = "TEXT")
@@ -65,8 +69,9 @@ public class Cliente {
     private String telefonoAlternativo;
 
     // Información Laboral
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String ocupacion;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "ocupacion_id", referencedColumnName = "id", nullable = false)
+    private CatOcupacion ocupacion;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String empresa;

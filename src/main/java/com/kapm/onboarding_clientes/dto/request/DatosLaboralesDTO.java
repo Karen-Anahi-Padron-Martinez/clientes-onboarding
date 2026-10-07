@@ -1,5 +1,8 @@
 package com.kapm.onboarding_clientes.dto.request;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.kapm.onboarding_clientes.config.JacksonConfig;
+import com.kapm.onboarding_clientes.validation.MontoDecimal;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -25,5 +28,7 @@ public class DatosLaboralesDTO {
 
     @NotNull(message = "El ingreso mensual es obligatorio")
     @DecimalMin(value = "0.01", message = "El ingreso mensual debe ser mayor a cero")
+    @MontoDecimal(message = "El ingreso mensual debe tener exactamente 2 decimales (Ej: 5000.00)")
+    @JsonSerialize(using = JacksonConfig.BigDecimalTwoDecimalsSerializer.class)
     private BigDecimal ingresoMensual;
 }

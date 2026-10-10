@@ -10,6 +10,7 @@ import com.kapm.onboarding_clientes.dto.response.ValidacionIdentificadorResponse
 import com.kapm.onboarding_clientes.exception.ReglaNegocioException;
 import com.kapm.onboarding_clientes.service.ClienteService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -51,7 +52,9 @@ public class ClienteController {
     @GetMapping
     @Operation(summary = "Consultar clientes", description = "Retorna el listado completo de clientes, o filtra por CURP o RFC si se envían como RequestParam (?curp=... o ?rfc=...).")
     public ResponseEntity<ApiResponse<?>> obtenerClientes(
+            @Parameter(description = "Filtrar por CURP (opcional)", example = "MEHC920824HDFRMN09")
             @RequestParam(required = false) String curp,
+            @Parameter(description = "Filtrar por RFC (opcional)", example = "MEHC9208243A8")
             @RequestParam(required = false) String rfc) {
         if (curp != null && !curp.isBlank()) {
             ClienteResponse cliente = clienteService.obtenerClientePorCurp(curp);
@@ -140,7 +143,9 @@ public class ClienteController {
         description = "Permite actualizar al cliente identificándolo por CURP o RFC recibidos por RequestParam (?curp=... o ?rfc=...) o directamente dentro del cuerpo JSON (Request Body). No requiere PathVariable."
     )
     public ResponseEntity<ApiResponse<ClienteResponse>> actualizarClienteConRequest(
+            @Parameter(description = "CURP del cliente a actualizar (opcional si se envía en el body)", example = "MEHC920824HDFRMN09")
             @RequestParam(required = false) String curp,
+            @Parameter(description = "RFC del cliente a actualizar (opcional si se envía en el body)", example = "MEHC9208243A8")
             @RequestParam(required = false) String rfc,
             @Valid @RequestBody ClienteUpdateRequest request) {
         
@@ -161,6 +166,7 @@ public class ClienteController {
     @PutMapping("/curp")
     @Operation(summary = "Actualizar cliente por CURP con RequestParam", description = "Busca al cliente por la CURP enviada en el request (?curp=... o en el cuerpo) y actualiza sus datos.")
     public ResponseEntity<ApiResponse<ClienteResponse>> actualizarClientePorCurpParam(
+            @Parameter(description = "CURP del cliente a actualizar", example = "MEHC920824HDFRMN09")
             @RequestParam(required = false) String curp,
             @Valid @RequestBody ClienteUpdateRequest request) {
         String curpFinal = (curp != null && !curp.isBlank()) ? curp : request.getCurp();
@@ -174,6 +180,7 @@ public class ClienteController {
     @PutMapping("/rfc")
     @Operation(summary = "Actualizar cliente por RFC con RequestParam", description = "Busca al cliente por el RFC enviado en el request (?rfc=... o en el cuerpo) y actualiza sus datos.")
     public ResponseEntity<ApiResponse<ClienteResponse>> actualizarClientePorRfcParam(
+            @Parameter(description = "RFC del cliente a actualizar", example = "MEHC9208243A8")
             @RequestParam(required = false) String rfc,
             @Valid @RequestBody ClienteUpdateRequest request) {
         String rfcFinal = (rfc != null && !rfc.isBlank()) ? rfc : request.getRfc();

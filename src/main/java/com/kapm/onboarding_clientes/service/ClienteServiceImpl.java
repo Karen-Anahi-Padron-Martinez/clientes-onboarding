@@ -10,12 +10,15 @@ import com.kapm.onboarding_clientes.dto.response.CuentaResponse;
 import com.kapm.onboarding_clientes.dto.response.LoginResponse;
 import com.kapm.onboarding_clientes.exception.*;
 import com.kapm.onboarding_clientes.model.*;
+import com.kapm.onboarding_clientes.model.catalogo.*;
 import com.kapm.onboarding_clientes.repository.ClienteRepository;
 import com.kapm.onboarding_clientes.repository.DatosSeguridadBiometriaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,14 +36,15 @@ public class ClienteServiceImpl implements ClienteService {
     private final CuentaService cuentaService;
     private final SeguridadBiometriaService seguridadBiometriaService;
     private final DatosSeguridadBiometriaRepository seguridadRepository;
+    private final CatalogoService catalogoService;
 
     @Override
     @Transactional
     public ClienteResponse registrarCliente(ClienteRegistrationRequest request) {
-        // 1. Validar Mayoría de Edad (18 años o más)
+        
         validarMayoriaDeEdad(request.getFechaNacimiento());
 
-        // 2. Validar Unicidad de CURP, RFC y Correo
+        
         String curp = request.getCurp().trim().toUpperCase();
         if (clienteRepository.existsByCurp(curp)) {
             throw new CurpDuplicadaException(curp);
@@ -56,6 +60,14 @@ public class ClienteServiceImpl implements ClienteService {
             throw new CorreoDuplicadoException(correo);
         }
 
+        // Búsqueda y asociación de entidades de catálogo (Foreign Keys)
+        CatSexo sexoCat = catalogoService.buscarSexo(request.getSexo());
+        CatEstadoCivil estadoCivilCat = catalogoService.buscarEstadoCivil(request.getEstadoCivil());
+        CatNacionalidad nacionalidadCat = catalogoService.buscarNacionalidad(request.getNacionalidad());
+        CatOcupacion ocupacionCat = catalogoService.buscarOcupacion(request.getLaboral().getOcupacion());
+        CatEstadoRepublica estadoDomicilioCat = catalogoService.buscarEstadoRepublica(request.getDomicilio().getEstado());
+        CatPais paisDomicilioCat = catalogoService.buscarPais(request.getDomicilio().getPais());
+
         // 3. Crear Domicilio
         Domicilio domicilio = Domicilio.builder()
                 .calle(request.getDomicilio().getCalle().trim())
@@ -63,9 +75,9 @@ public class ClienteServiceImpl implements ClienteService {
                 .numeroInterior(request.getDomicilio().getNumeroInterior() != null ? request.getDomicilio().getNumeroInterior().trim() : null)
                 .colonia(request.getDomicilio().getColonia().trim())
                 .municipio(request.getDomicilio().getMunicipio().trim())
-                .estado(request.getDomicilio().getEstado().trim())
+                .estado(estadoDomicilioCat)
                 .codigoPostal(request.getDomicilio().getCodigoPostal().trim())
-                .pais(request.getDomicilio().getPais().trim())
+                .pais(paisDomicilioCat)
                 .build();
 
         // 4. Crear Cuenta Bancaria Asociada Automáticamente y Registro de Saldo
@@ -83,13 +95,13 @@ public class ClienteServiceImpl implements ClienteService {
                 .fechaNacimiento(request.getFechaNacimiento())
                 .curp(curp)
                 .rfc(rfc)
-                .sexo(request.getSexo().trim().toUpperCase())
-                .nacionalidad(request.getNacionalidad().trim())
-                .estadoCivil(request.getEstadoCivil().trim())
+                .sexo(sexoCat)
+                .nacionalidad(nacionalidadCat)
+                .estadoCivil(estadoCivilCat)
                 .correo(correo)
                 .telefonoMovil(request.getTelefonoMovil().trim())
                 .telefonoAlternativo(request.getTelefonoAlternativo() != null && !request.getTelefonoAlternativo().isBlank() ? request.getTelefonoAlternativo().trim() : null)
-                .ocupacion(request.getLaboral().getOcupacion().trim())
+                .ocupacion(ocupacionCat)
                 .empresa(request.getLaboral().getEmpresa().trim())
                 .ingresoMensual(request.getLaboral().getIngresoMensual())
                 .activo(true)
@@ -194,14 +206,22 @@ public class ClienteServiceImpl implements ClienteService {
             throw new CorreoDuplicadoException(nuevoCorreo);
         }
 
+        // Búsqueda y asociación de entidades de catálogo (Foreign Keys)
+        CatSexo sexoCat = catalogoService.buscarSexo(request.getSexo());
+        CatEstadoCivil estadoCivilCat = catalogoService.buscarEstadoCivil(request.getEstadoCivil());
+        CatNacionalidad nacionalidadCat = catalogoService.buscarNacionalidad(request.getNacionalidad());
+        CatOcupacion ocupacionCat = catalogoService.buscarOcupacion(request.getLaboral().getOcupacion());
+        CatEstadoRepublica estadoDomicilioCat = catalogoService.buscarEstadoRepublica(request.getDomicilio().getEstado());
+        CatPais paisDomicilioCat = catalogoService.buscarPais(request.getDomicilio().getPais());
+
         cliente.setNombre(request.getNombre().trim());
         cliente.setSegundoNombre(request.getSegundoNombre() != null ? request.getSegundoNombre().trim() : null);
         cliente.setApellidoPaterno(request.getApellidoPaterno().trim());
         cliente.setApellidoMaterno(request.getApellidoMaterno().trim());
         cliente.setFechaNacimiento(request.getFechaNacimiento());
-        cliente.setSexo(request.getSexo().trim().toUpperCase());
-        cliente.setNacionalidad(request.getNacionalidad().trim());
-        cliente.setEstadoCivil(request.getEstadoCivil().trim());
+        cliente.setSexo(sexoCat);
+        cliente.setNacionalidad(nacionalidadCat);
+        cliente.setEstadoCivil(estadoCivilCat);
 
         cliente.setCorreo(nuevoCorreo);
         cliente.setTelefonoMovil(request.getTelefonoMovil().trim());
@@ -213,11 +233,11 @@ public class ClienteServiceImpl implements ClienteService {
         dom.setNumeroInterior(request.getDomicilio().getNumeroInterior() != null ? request.getDomicilio().getNumeroInterior().trim() : null);
         dom.setColonia(request.getDomicilio().getColonia().trim());
         dom.setMunicipio(request.getDomicilio().getMunicipio().trim());
-        dom.setEstado(request.getDomicilio().getEstado().trim());
+        dom.setEstado(estadoDomicilioCat);
         dom.setCodigoPostal(request.getDomicilio().getCodigoPostal().trim());
-        dom.setPais(request.getDomicilio().getPais().trim());
+        dom.setPais(paisDomicilioCat);
 
-        cliente.setOcupacion(request.getLaboral().getOcupacion().trim());
+        cliente.setOcupacion(ocupacionCat);
         cliente.setEmpresa(request.getLaboral().getEmpresa().trim());
         cliente.setIngresoMensual(request.getLaboral().getIngresoMensual());
 
@@ -290,7 +310,7 @@ public class ClienteServiceImpl implements ClienteService {
                     .build();
         }
 
-        // Actualizar estado loggeado = true y timestamp de última actividad
+     
         seguridad.setLoggeado(true);
         seguridad.setUltimaActividad(LocalDateTime.now());
         seguridadRepository.save(seguridad);
@@ -363,15 +383,17 @@ public class ClienteServiceImpl implements ClienteService {
                 .numeroInterior(dom.getNumeroInterior())
                 .colonia(dom.getColonia())
                 .municipio(dom.getMunicipio())
-                .estado(dom.getEstado())
+                .estado(dom.getEstado() != null ? dom.getEstado().getDescripcion() : null)
                 .codigoPostal(dom.getCodigoPostal())
-                .pais(dom.getPais())
+                .pais(dom.getPais() != null ? dom.getPais().getDescripcion() : null)
                 .build();
 
         DatosLaboralesDTO labDTO = DatosLaboralesDTO.builder()
-                .ocupacion(cliente.getOcupacion())
+                .ocupacion(cliente.getOcupacion() != null ? cliente.getOcupacion().getDescripcion() : null)
                 .empresa(cliente.getEmpresa())
-                .ingresoMensual(cliente.getIngresoMensual())
+                .ingresoMensual(cliente.getIngresoMensual() != null
+                        ? cliente.getIngresoMensual().setScale(2, RoundingMode.HALF_UP)
+                        : null)
                 .build();
 
         CuentaResponse cuentaResponse = null;
@@ -379,7 +401,9 @@ public class ClienteServiceImpl implements ClienteService {
             cuentaResponse = CuentaResponse.builder()
                     .id(cliente.getCuenta().getId())
                     .numeroCuenta(cliente.getCuenta().getNumeroCuenta())
-                    .saldo(cliente.getCuenta().getSaldo())
+                    .saldo(cliente.getCuenta().getSaldo() != null
+                            ? cliente.getCuenta().getSaldo().setScale(2, RoundingMode.HALF_UP)
+                            : null)
                     .estatus(cliente.getCuenta().getEstatus())
                     .fechaCreacion(cliente.getCuenta().getFechaCreacion())
                     .clienteNombreCompleto(nombreCompleto)
@@ -402,7 +426,7 @@ public class ClienteServiceImpl implements ClienteService {
 
             if (seguridad.getUltimaActividad() != null) {
                 segundosInactividad = Duration.between(seguridad.getUltimaActividad(), LocalDateTime.now()).getSeconds();
-                // 5-second inactivity timeout check
+                
                 if (Boolean.TRUE.equals(seguridad.getLoggeado()) && segundosInactividad <= 5) {
                     loggeado = true;
                     seguridad.setUltimaActividad(LocalDateTime.now());
@@ -427,9 +451,9 @@ public class ClienteServiceImpl implements ClienteService {
                 .edad(edad)
                 .curp(cliente.getCurp())
                 .rfc(cliente.getRfc())
-                .sexo(cliente.getSexo())
-                .nacionalidad(cliente.getNacionalidad())
-                .estadoCivil(cliente.getEstadoCivil())
+                .sexo(cliente.getSexo() != null ? cliente.getSexo().getCodigo() : null)
+                .nacionalidad(cliente.getNacionalidad() != null ? cliente.getNacionalidad().getDescripcion() : null)
+                .estadoCivil(cliente.getEstadoCivil() != null ? cliente.getEstadoCivil().getCodigo() : null)
                 .correo(cliente.getCorreo())
                 .telefonoMovil(cliente.getTelefonoMovil())
                 .telefonoAlternativo(cliente.getTelefonoAlternativo())

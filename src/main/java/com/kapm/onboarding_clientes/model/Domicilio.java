@@ -1,5 +1,7 @@
 package com.kapm.onboarding_clientes.model;
 
+import com.kapm.onboarding_clientes.model.catalogo.CatEstadoRepublica;
+import com.kapm.onboarding_clientes.model.catalogo.CatPais;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -31,12 +33,14 @@ public class Domicilio {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String municipio;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String estado;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "estado_id", referencedColumnName = "id", nullable = false)
+    private CatEstadoRepublica estado;
 
     @Column(name = "codigo_postal", nullable = false, columnDefinition = "TEXT")
     private String codigoPostal;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String pais;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "pais_id", referencedColumnName = "id", nullable = false)
+    private CatPais pais;
 }

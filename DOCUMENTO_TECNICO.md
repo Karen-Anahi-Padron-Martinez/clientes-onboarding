@@ -50,6 +50,42 @@ La solución adopta una **Arquitectura en Capas Decoplada (Layered Clean Archite
 
 ```mermaid
 erDiagram
+    CAT_SEXOS {
+        bigint id PK
+        string codigo "TEXT UNIQUE"
+        string descripcion "TEXT"
+    }
+
+    CAT_ESTADOS_CIVILES {
+        bigint id PK
+        string codigo "TEXT UNIQUE"
+        string descripcion "TEXT"
+    }
+
+    CAT_NACIONALIDADES {
+        bigint id PK
+        string codigo "TEXT UNIQUE"
+        string descripcion "TEXT"
+    }
+
+    CAT_OCUPACIONES {
+        bigint id PK
+        string codigo "TEXT UNIQUE"
+        string descripcion "TEXT"
+    }
+
+    CAT_ESTADOS_REPUBLICA {
+        bigint id PK
+        string codigo "TEXT UNIQUE"
+        string descripcion "TEXT"
+    }
+
+    CAT_PAISES {
+        bigint id PK
+        string codigo "TEXT UNIQUE"
+        string descripcion "TEXT"
+    }
+
     CLIENTES {
         bigint id PK
         string nombre "TEXT"
@@ -59,13 +95,13 @@ erDiagram
         date fecha_nacimiento "DATE"
         string curp "TEXT UNIQUE"
         string rfc "TEXT UNIQUE"
-        string sexo "TEXT"
-        string nacionalidad "TEXT"
-        string estado_civil "TEXT"
+        bigint sexo_id FK
+        bigint nacionalidad_id FK
+        bigint estado_civil_id FK
         string correo "TEXT UNIQUE"
         string telefono_movil "TEXT"
         string telefono_alternativo "TEXT"
-        string ocupacion "TEXT"
+        bigint ocupacion_id FK
         string empresa "TEXT"
         decimal ingreso_mensual "NUMERIC(15,2)"
         boolean activo "BOOLEAN"
@@ -82,9 +118,9 @@ erDiagram
         string numero_interior "TEXT"
         string colonia "TEXT"
         string municipio "TEXT"
-        string estado "TEXT"
+        bigint estado_id FK
         string codigo_postal "TEXT"
-        string pais "TEXT"
+        bigint pais_id FK
     }
 
     CUENTAS {
@@ -114,6 +150,12 @@ erDiagram
         timestamp fecha_registro_biometrico "TIMESTAMP"
     }
 
+    CLIENTES }o--|| CAT_SEXOS : "clasificado_en"
+    CLIENTES }o--|| CAT_NACIONALIDADES : "pertenece_a"
+    CLIENTES }o--|| CAT_ESTADOS_CIVILES : "registra"
+    CLIENTES }o--|| CAT_OCUPACIONES : "desempeña"
+    DOMICILIOS }o--|| CAT_ESTADOS_REPUBLICA : "ubicado_en"
+    DOMICILIOS }o--|| CAT_PAISES : "país_de_residencia"
     CLIENTES ||--|| DOMICILIOS : "posee 1:1"
     CLIENTES ||--|| CUENTAS : "posee 1:1"
     CLIENTES ||--|| DATOS_SEGURIDAD_BIOMETRIA : "asocia 1:1"
@@ -135,8 +177,51 @@ DROP TABLE IF EXISTS clientes CASCADE;
 DROP TABLE IF EXISTS domicilios CASCADE;
 DROP TABLE IF EXISTS cuentas CASCADE;
 DROP TABLE IF EXISTS datos_seguridad_biometria CASCADE;
+DROP TABLE IF EXISTS cat_sexos CASCADE;
+DROP TABLE IF EXISTS cat_estados_civiles CASCADE;
+DROP TABLE IF EXISTS cat_nacionalidades CASCADE;
+DROP TABLE IF EXISTS cat_ocupaciones CASCADE;
+DROP TABLE IF EXISTS cat_estados_republica CASCADE;
+DROP TABLE IF EXISTS cat_paises CASCADE;
 
--- 1. TABLA DOMICILIOS (Tipo TEXT)
+-- 1. TABLAS DE CATÁLOGOS NORMALIZADOS
+CREATE TABLE cat_sexos (
+    id BIGSERIAL PRIMARY KEY,
+    codigo TEXT NOT NULL UNIQUE,
+    descripcion TEXT NOT NULL
+);
+
+CREATE TABLE cat_estados_civiles (
+    id BIGSERIAL PRIMARY KEY,
+    codigo TEXT NOT NULL UNIQUE,
+    descripcion TEXT NOT NULL
+);
+
+CREATE TABLE cat_nacionalidades (
+    id BIGSERIAL PRIMARY KEY,
+    codigo TEXT NOT NULL UNIQUE,
+    descripcion TEXT NOT NULL
+);
+
+CREATE TABLE cat_ocupaciones (
+    id BIGSERIAL PRIMARY KEY,
+    codigo TEXT NOT NULL UNIQUE,
+    descripcion TEXT NOT NULL
+);
+
+CREATE TABLE cat_estados_republica (
+    id BIGSERIAL PRIMARY KEY,
+    codigo TEXT NOT NULL UNIQUE,
+    descripcion TEXT NOT NULL
+);
+
+CREATE TABLE cat_paises (
+    id BIGSERIAL PRIMARY KEY,
+    codigo TEXT NOT NULL UNIQUE,
+    descripcion TEXT NOT NULL
+);
+
+-- 2. TABLA DOMICILIOS
 CREATE TABLE domicilios (
     id BIGSERIAL PRIMARY KEY,
     calle TEXT NOT NULL,
@@ -144,13 +229,15 @@ CREATE TABLE domicilios (
     numero_interior TEXT,
     colonia TEXT NOT NULL,
     municipio TEXT NOT NULL,
-    estado TEXT NOT NULL,
+    estado_id BIGINT NOT NULL,
     codigo_postal TEXT NOT NULL,
-    pais TEXT NOT NULL DEFAULT 'México',
-    CONSTRAINT chk_codigo_postal CHECK (codigo_postal ~ '^\d{5}$')
+    pais_id BIGINT NOT NULL,
+    CONSTRAINT chk_codigo_postal CHECK (codigo_postal ~ '^\d{5}$'),
+    CONSTRAINT fk_domicilio_estado FOREIGN KEY (estado_id) REFERENCES cat_estados_republica(id),
+    CONSTRAINT fk_domicilio_pais FOREIGN KEY (pais_id) REFERENCES cat_paises(id)
 );
 
--- 2. TABLA CUENTAS (Tipo TEXT)
+-- 3. TABLA CUENTAS
 CREATE TABLE cuentas (
     id BIGSERIAL PRIMARY KEY,
     numero_cuenta TEXT NOT NULL UNIQUE,
@@ -161,7 +248,7 @@ CREATE TABLE cuentas (
     CONSTRAINT chk_estatus_valido CHECK (estatus IN ('ACTIVA', 'INACTIVA', 'BLOQUEADA'))
 );
 
--- 3. TABLA SALDOS (Dedicada)
+-- 4. TABLA SALDOS
 CREATE TABLE saldos (
     id BIGSERIAL PRIMARY KEY,
     cuenta_id BIGINT NOT NULL UNIQUE,
@@ -171,7 +258,7 @@ CREATE TABLE saldos (
     CONSTRAINT fk_saldos_cuenta FOREIGN KEY (cuenta_id) REFERENCES cuentas(id) ON DELETE CASCADE
 );
 
--- 4. TABLA DATOS_SEGURIDAD_BIOMETRIA (Login Cifrado, Biometría, loggeado TRUE/FALSE)
+-- 5. TABLA DATOS_SEGURIDAD_BIOMETRIA
 CREATE TABLE datos_seguridad_biometria (
     id BIGSERIAL PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
@@ -184,7 +271,7 @@ CREATE TABLE datos_seguridad_biometria (
     CONSTRAINT chk_tipo_biometria CHECK (tipo_biometria IN ('HUELLA_DACTILAR', 'RECONOCIMIENTO_FACIAL', 'IRIS', 'PATRON_VASCULAR'))
 );
 
--- 5. TABLA CLIENTES (Tipo TEXT)
+-- 6. TABLA CLIENTES
 CREATE TABLE clientes (
     id BIGSERIAL PRIMARY KEY,
     nombre TEXT NOT NULL,
@@ -194,13 +281,13 @@ CREATE TABLE clientes (
     fecha_nacimiento DATE NOT NULL,
     curp TEXT NOT NULL UNIQUE,
     rfc TEXT NOT NULL UNIQUE,
-    sexo TEXT NOT NULL,
-    nacionalidad TEXT NOT NULL DEFAULT 'Mexicana',
-    estado_civil TEXT NOT NULL,
+    sexo_id BIGINT NOT NULL,
+    nacionalidad_id BIGINT NOT NULL,
+    estado_civil_id BIGINT NOT NULL,
     correo TEXT NOT NULL UNIQUE,
     telefono_movil TEXT NOT NULL,
     telefono_alternativo TEXT,
-    ocupacion TEXT NOT NULL,
+    ocupacion_id BIGINT NOT NULL,
     empresa TEXT NOT NULL,
     ingreso_mensual DECIMAL(15, 2) NOT NULL,
     activo BOOLEAN NOT NULL DEFAULT TRUE,
@@ -209,6 +296,10 @@ CREATE TABLE clientes (
     cuenta_id BIGINT NOT NULL UNIQUE,
     seguridad_id BIGINT UNIQUE,
     
+    CONSTRAINT fk_cliente_sexo FOREIGN KEY (sexo_id) REFERENCES cat_sexos(id),
+    CONSTRAINT fk_cliente_nacionalidad FOREIGN KEY (nacionalidad_id) REFERENCES cat_nacionalidades(id),
+    CONSTRAINT fk_cliente_estado_civil FOREIGN KEY (estado_civil_id) REFERENCES cat_estados_civiles(id),
+    CONSTRAINT fk_cliente_ocupacion FOREIGN KEY (ocupacion_id) REFERENCES cat_ocupaciones(id),
     CONSTRAINT fk_cliente_domicilio FOREIGN KEY (domicilio_id) REFERENCES domicilios(id) ON DELETE CASCADE,
     CONSTRAINT fk_cliente_cuenta FOREIGN KEY (cuenta_id) REFERENCES cuentas(id) ON DELETE CASCADE,
     CONSTRAINT fk_cliente_seguridad FOREIGN KEY (seguridad_id) REFERENCES datos_seguridad_biometria(id) ON DELETE CASCADE,
@@ -247,3 +338,41 @@ CREATE UNIQUE INDEX idx_cuentas_numero ON cuentas(numero_cuenta);
 | `POST` | `/api/auth/login` | Login con contraseña BCrypt o biometría SHA-256 (`loggeado: true`) | `200 OK` |
 | `GET` | `/api/auth/estado/{username}` | Consultar estado `loggeado: true/false` y temporizador de 5s | `200 OK` |
 | `POST` | `/api/auth/logout/{username}` | Cerrar sesión manualmente (`loggeado: false`) | `200 OK` |
+| `GET` | `/api/catalogos` | Consultar todos los catálogos estandarizados del sistema | `200 OK` |
+| `GET` | `/api/catalogos/sexos` | Catálogo de Sexos / Géneros (MASCULINO, FEMENINO, OTRO) | `200 OK` |
+| `GET` | `/api/catalogos/estados-civiles` | Catálogo de Estados Civiles (SOLTERO, CASADO, DIVORCIADO, VIUDO, UNION_LIBRE) | `200 OK` |
+| `GET` | `/api/catalogos/nacionalidades` | Catálogo de Nacionalidades (Mexicana, Estadounidense, Española, etc.) | `200 OK` |
+| `GET` | `/api/catalogos/ocupaciones` | Catálogo de Actividades Laborales estandarizadas | `200 OK` |
+| `GET` | `/api/catalogos/estados-republica` | Catálogo de las 32 Entidades Federativas de México | `200 OK` |
+| `GET` | `/api/catalogos/paises` | Catálogo de Países para Domicilio | `200 OK` |
+| `GET` | `/api/catalogos/tipos-biometria` | Catálogo de Modalidades Biométricas | `200 OK` |
+| `GET` | `/api/catalogos/estatus-cuenta` | Catálogo de Estados de Cuenta Bancaria | `200 OK` |
+
+---
+
+## 7. Catálogos Estandarizados (Control de Variación de Datos)
+
+Para evitar la disparidad y variabilidad arbitraria en la captura manual de datos (como diferencias ortográficas, mayúsculas/minúsculas, abreviaturas no oficiales o errores tipográficos), se incorporó una capa de **Catálogos Estandarizados**:
+
+1. **Sexo / Género (`SexoCatalogo`)**:
+   - `MASCULINO`, `FEMENINO`, `OTRO`.
+   - Garantiza consistencia directa con el cálculo de CURP en México (`H` / `M`).
+
+2. **Estado Civil (`EstadoCivilCatalogo`)**:
+   - `SOLTERO`, `CASADO`, `DIVORCIADO`, `VIUDO`, `UNION_LIBRE`.
+
+3. **Nacionalidad (`NacionalidadCatalogo`)**:
+   - Estandariza la nacionalidad evitando variaciones como `mexicana`, `MEX`, `mexicano` o `México`.
+
+4. **Entidades Federativas de México (`EstadoRepublicaCatalogo`)**:
+   - Comprende los 32 estados oficiales de la República Mexicana (Aguascalientes hasta Zacatecas), previniendo abreviaturas conflictivas como `CDMX`, `D.F.`, `Edomex`, `NL`, etc.
+
+5. **Países (`PaisCatalogo`)**:
+   - Estandarización de país de residencia fiscal / domicilio con valor por defecto `México`.
+
+6. **Ocupación / Giro Laboral (`OcupacionCatalogo`)**:
+   - Homologa las ocupaciones (`Empleado Sector Privado`, `Servidor Público`, `Profesionista Independiente`, `Desarrollador TI`, `Empresario`, `Comerciante`, `Estudiante`, `Jubilado/Pensionado`, `Hogar`, `Otro`).
+
+7. **Sincronización Dinámica Frontend-Backend**:
+   - La interfaz Web consume dinámicamente `/api/catalogos` poblando los elementos `<select>` en el registro y en la edición.
+   - La capa de servicio (`CatalogoService`) normaliza y valida los valores recibidos garantizando integridad referencial.

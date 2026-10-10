@@ -1,5 +1,6 @@
 package com.kapm.onboarding_clientes.dto.request;
 
+import com.kapm.onboarding_clientes.validation.MontoDecimal;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -82,5 +83,6 @@ public class ClienteRegistrationRequest {
     private DatosSeguridadDTO seguridad;
 
     @DecimalMin(value = "0.00", message = "El saldo inicial no puede ser negativo")
+    @MontoDecimal(message = "El saldo inicial debe tener exactamente 2 decimales (Ej: 300000.00)")
     private BigDecimal saldoInicial;
 }

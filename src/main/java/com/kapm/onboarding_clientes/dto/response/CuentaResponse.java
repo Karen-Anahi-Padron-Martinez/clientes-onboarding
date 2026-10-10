@@ -1,5 +1,6 @@
 package com.kapm.onboarding_clientes.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.kapm.onboarding_clientes.config.JacksonConfig;
 import com.kapm.onboarding_clientes.model.EstatusCuenta;
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class CuentaResponse {
 
     private Long id;

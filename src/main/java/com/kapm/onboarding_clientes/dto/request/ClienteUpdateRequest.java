@@ -37,6 +37,13 @@ public class ClienteUpdateRequest {
     @Past(message = "La fecha de nacimiento no puede ser una fecha futura")
     private LocalDate fechaNacimiento;
 
+    // CURP y RFC (Opcionales en la actualización; si se proporcionan, se valida su formato oficial)
+    @Pattern(regexp = "^$|^[a-zA-Z]{4}\\d{6}[hHmM][a-zA-Z]{5}[a-zA-Z0-9]{2}$", message = "El formato de la CURP es inválido (Ej: XXXX000000XXXXXX00)")
+    private String curp;
+
+    @Pattern(regexp = "^$|^[a-zA-Z&ñÑ]{3,4}\\d{6}[a-zA-Z0-9]{3}$", message = "El formato de RFC es inválido (debe contener 12 o 13 caracteres)")
+    private String rfc;
+
     @NotBlank(message = "El sexo es obligatorio")
     private String sexo;
 

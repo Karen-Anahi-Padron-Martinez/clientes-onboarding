@@ -331,17 +331,39 @@ CREATE UNIQUE INDEX idx_cuentas_numero ON cuentas(numero_cuenta);
 
 | Método | Endpoint | Descripción | Estado HTTP |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/clientes` | Registrar cliente con datos biométricos, tabla de saldos y bandera `loggeado` | `201 CREATED` |
+| `POST` | `/api/clientes` | Registrar cliente (por seguridad no expone `id` en la respuesta) | `201 CREATED` |
 | `GET` | `/api/clientes` | Consultar el listado completo de clientes | `200 OK` |
-| `GET` | `/api/clientes/{id}` | Consultar cliente por ID (incluye estado de sesión `loggeado: true/false`) | `200 OK` |
-| `GET` | `/api/cuentas/{numeroCuenta}/saldo`| Consultar saldos contable y disponible de la tabla `saldos` | `200 OK` |
-| `POST` | `/api/auth/login` | Login con contraseña BCrypt o biometría SHA-256 (`loggeado: true`) | `200 OK` |
+| `GET` | `/api/clientes/activos` | Consultar únicamente clientes en estatus activo | `200 OK` |
+| `GET` | `/api/clientes/{id}` | Consultar cliente por ID primario | `200 OK` |
+| `GET` | `/api/clientes/curp/{curp}` | Consultar cliente por su clave CURP (validación RENAPO) | `200 OK` |
+| `GET` | `/api/clientes/rfc/{rfc}` | Consultar cliente por su clave RFC (validación SAT) | `200 OK` |
+| `GET` | `/api/clientes/correo/{correo}` | Consultar cliente por correo electrónico | `200 OK` |
+| `GET` | `/api/clientes/cuenta/{numeroCuenta}` | Consultar cliente por su número de cuenta bancaria | `200 OK` |
+| `GET` | `/api/clientes/rango-fechas` | Filtrar clientes por rango de fechas de registro | `200 OK` |
+| `PUT` | `/api/clientes/curp/{curp}` | **Actualizar información de cliente por CURP** con validaciones | `200 OK` |
+| `PUT` | `/api/clientes/rfc/{rfc}` | **Actualizar información de cliente por RFC** con validaciones | `200 OK` |
+| `PUT` | `/api/clientes/{id}` | Actualizar información de cliente por ID | `200 OK` |
+| `DELETE` | `/api/clientes/curp/{curp}` | **Baja lógica de cliente por CURP** (desactiva cuenta bancaria) | `200 OK` |
+| `DELETE` | `/api/clientes/rfc/{rfc}` | **Baja lógica de cliente por RFC** (desactiva cuenta bancaria) | `200 OK` |
+| `DELETE` | `/api/clientes/{id}` | Baja lógica de cliente por ID primario | `200 OK` |
+| `PATCH` | `/api/clientes/curp/{curp}/reactivar` | **Reactivar cliente y su cuenta bancaria por CURP** | `200 OK` |
+| `PATCH` | `/api/clientes/rfc/{rfc}/reactivar` | **Reactivar cliente y su cuenta bancaria por RFC** | `200 OK` |
+| `GET` | `/api/clientes/validar/curp/{curp}` | **Pre-validar sintaxis y disponibilidad de CURP en tiempo real** | `200 OK` |
+| `GET` | `/api/clientes/validar/rfc/{rfc}` | **Pre-validar sintaxis y disponibilidad de RFC en tiempo real** | `200 OK` |
+| `PATCH` | `/api/clientes/curp/{curp}/contacto` | **Actualizar datos de contacto por CURP** (correo y teléfonos) | `200 OK` |
+| `PATCH` | `/api/clientes/rfc/{rfc}/contacto` | **Actualizar datos de contacto por RFC** (correo y teléfonos) | `200 OK` |
+| `GET` | `/api/clientes/curp/{curp}/cuenta` | **Consultar cuenta bancaria y saldo directo por CURP** | `200 OK` |
+| `GET` | `/api/clientes/rfc/{rfc}/cuenta` | **Consultar cuenta bancaria y saldo directo por RFC** | `200 OK` |
+| `GET` | `/api/cuentas/activas` | Consultar listado de cuentas bancarias activas | `200 OK` |
+| `GET` | `/api/cuentas/{numeroCuenta}` | Consultar cuenta por número único de cuenta | `200 OK` |
+| `GET` | `/api/cuentas/{numeroCuenta}/saldo` | Consultar saldos contable y disponible de la tabla `saldos` | `200 OK` |
+| `POST` | `/api/auth/login` | Login seguro con contraseña BCrypt o biometría SHA-256 | `200 OK` |
 | `GET` | `/api/auth/estado/{username}` | Consultar estado `loggeado: true/false` y temporizador de 5s | `200 OK` |
 | `POST` | `/api/auth/logout/{username}` | Cerrar sesión manualmente (`loggeado: false`) | `200 OK` |
 | `GET` | `/api/catalogos` | Consultar todos los catálogos estandarizados del sistema | `200 OK` |
 | `GET` | `/api/catalogos/sexos` | Catálogo de Sexos / Géneros (MASCULINO, FEMENINO, OTRO) | `200 OK` |
-| `GET` | `/api/catalogos/estados-civiles` | Catálogo de Estados Civiles (SOLTERO, CASADO, DIVORCIADO, VIUDO, UNION_LIBRE) | `200 OK` |
-| `GET` | `/api/catalogos/nacionalidades` | Catálogo de Nacionalidades (Mexicana, Estadounidense, Española, etc.) | `200 OK` |
+| `GET` | `/api/catalogos/estados-civiles` | Catálogo de Estados Civiles (SOLTERO, CASADO, DIVORCIADO, etc.) | `200 OK` |
+| `GET` | `/api/catalogos/nacionalidades` | Catálogo de Nacionalidades estandarizadas | `200 OK` |
 | `GET` | `/api/catalogos/ocupaciones` | Catálogo de Actividades Laborales estandarizadas | `200 OK` |
 | `GET` | `/api/catalogos/estados-republica` | Catálogo de las 32 Entidades Federativas de México | `200 OK` |
 | `GET` | `/api/catalogos/paises` | Catálogo de Países para Domicilio | `200 OK` |

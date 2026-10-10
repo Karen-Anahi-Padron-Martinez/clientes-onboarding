@@ -1,5 +1,6 @@
 package com.kapm.onboarding_clientes.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.kapm.onboarding_clientes.dto.request.DatosLaboralesDTO;
 import com.kapm.onboarding_clientes.dto.request.DomicilioDTO;
 import com.kapm.onboarding_clientes.model.TipoBiometria;
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ClienteResponse {
 
     private Long id;

@@ -1140,7 +1140,11 @@
             const num = document.getElementById('searchCuentaNum').value.trim();
             if (!num) return alert('Ingrese un número de cuenta');
             try {
-                const res = await fetch(`/api/cuentas/${num}/saldo`);
+                const res = await fetch('/api/cuentas/saldo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ numeroCuenta: num })
+                });
                 const json = await res.json();
                 if (res.ok && json.exito) {
                     alert(`INFORMACIÓN DE SALDO:\nCuenta: ${json.datos.numeroCuenta}\nTitular: ${json.datos.titularNombreCompleto}\nSaldo Disponible: $${json.datos.saldo}\nEstatus: ${json.datos.estatus}`);
@@ -1155,7 +1159,11 @@
         async function desactivarCliente(curp) {
             if (!confirm(`¿Está seguro de realizar la baja lógica del cliente con CURP ${curp}? Su cuenta bancaria asociada cambiará a INACTIVA.`)) return;
             try {
-                const res = await fetch(`/api/clientes/curp/${encodeURIComponent(curp)}`, { method: 'DELETE' });
+                const res = await fetch('/api/clientes/desactivar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ curp: curp })
+                });
                 const json = await res.json();
                 if (res.ok) {
                     mostrarAlerta(`Baja lógica ejecutada correctamente para el cliente con CURP ${curp}.`);
@@ -1171,7 +1179,11 @@
         async function reactivarCliente(curp) {
             if (!confirm(`¿Desea reactivar el estatus del cliente con CURP ${curp} y su cuenta bancaria?`)) return;
             try {
-                const res = await fetch(`/api/clientes/curp/${encodeURIComponent(curp)}/reactivar`, { method: 'PATCH' });
+                const res = await fetch('/api/clientes/reactivar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ curp: curp })
+                });
                 const json = await res.json();
                 if (res.ok && json.exito) {
                     mostrarAlerta(`Cliente con CURP ${curp} reactivado con éxito.`);
@@ -1247,15 +1259,15 @@
             };
 
             try {
-                // Actualización mediante Request (sin PathVariable)
-                const res = await fetch(`/api/clientes?curp=${encodeURIComponent(curpOriginal)}`, {
+                // Actualización mediante Request Body (sin PathVariable ni QueryParams)
+                const res = await fetch('/api/clientes', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
                 const json = await res.json();
                 if (res.ok && json.exito) {
-                    mostrarAlerta(`Cliente actualizado con éxito mediante CURP (${curpOriginal}).`);
+                    mostrarAlerta(`Cliente actualizado con éxito mediante CURP (${payload.curp}).`);
                     cerrarModal();
                     cargarClientes();
                 } else {

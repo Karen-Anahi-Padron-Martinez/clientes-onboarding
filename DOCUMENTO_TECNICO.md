@@ -323,52 +323,43 @@ CREATE UNIQUE INDEX idx_cuentas_numero ON cuentas(numero_cuenta);
 1. **Encriptación de Login (BCrypt)**: Las contraseñas se encriptan con algoritmos de hashing BCrypt adaptativos con salting automático.
 2. **Cifrado Biométrico (SHA-256)**: Las plantillas de huella dactilar o rostro se encriptan mediante SHA-256.
 3. **Bandera `loggeado` (true/false)**: Cuando un usuario realiza login exitoso (`POST /api/auth/login`), la bandera `loggeado` pasa a `true` y se guarda la hora de última actividad.
-4. **Temporizador de Inactividad de 5 Segundos**: En cada consulta a los endpoints únicos del usuario (`GET /api/clientes/{id}`, `GET /api/cuentas/{numeroCuenta}/saldo`, `GET /api/auth/estado/{username}`), se evalúa el tiempo transcurrido desde la última actividad. Si transcurren **más de 5 segundos**, la sesión cambia automáticamente a **`loggeado: false`** y el campo `estadoSesion` indica **EXPIRADA POR INACTIVIDAD (5s)**.
+4. **Temporizador de Inactividad de 5 Segundos**: En cada consulta a los endpoints únicos del usuario (`POST /api/clientes/cuenta`, `POST /api/cuentas/saldo`, `POST /api/auth/estado`), se evalúa el tiempo transcurrido desde la última actividad. Si transcurren **más de 5 segundos**, la sesión cambia automáticamente a **`loggeado: false`** y el campo `estadoSesion` indica **EXPIRADA POR INACTIVIDAD (5s)**.
 
 ---
 
-## 6. Endpoints API REST
+## 6. Endpoints API REST (100% Request Body - Cero PathVariables)
 
-| Método | Endpoint | Descripción | Estado HTTP |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/clientes` | Registrar cliente (por seguridad no expone `id` en la respuesta) | `201 CREATED` |
-| `GET` | `/api/clientes` | Consultar el listado completo de clientes | `200 OK` |
-| `GET` | `/api/clientes/activos` | Consultar únicamente clientes en estatus activo | `200 OK` |
-| `GET` | `/api/clientes/{id}` | Consultar cliente por ID primario | `200 OK` |
-| `GET` | `/api/clientes/curp/{curp}` | Consultar cliente por su clave CURP (validación RENAPO) | `200 OK` |
-| `GET` | `/api/clientes/rfc/{rfc}` | Consultar cliente por su clave RFC (validación SAT) | `200 OK` |
-| `GET` | `/api/clientes/correo/{correo}` | Consultar cliente por correo electrónico | `200 OK` |
-| `GET` | `/api/clientes/cuenta/{numeroCuenta}` | Consultar cliente por su número de cuenta bancaria | `200 OK` |
-| `GET` | `/api/clientes/rango-fechas` | Filtrar clientes por rango de fechas de registro | `200 OK` |
-| `PUT` | `/api/clientes/curp/{curp}` | **Actualizar información de cliente por CURP** con validaciones | `200 OK` |
-| `PUT` | `/api/clientes/rfc/{rfc}` | **Actualizar información de cliente por RFC** con validaciones | `200 OK` |
-| `PUT` | `/api/clientes/{id}` | Actualizar información de cliente por ID | `200 OK` |
-| `DELETE` | `/api/clientes/curp/{curp}` | **Baja lógica de cliente por CURP** (desactiva cuenta bancaria) | `200 OK` |
-| `DELETE` | `/api/clientes/rfc/{rfc}` | **Baja lógica de cliente por RFC** (desactiva cuenta bancaria) | `200 OK` |
-| `DELETE` | `/api/clientes/{id}` | Baja lógica de cliente por ID primario | `200 OK` |
-| `PATCH` | `/api/clientes/curp/{curp}/reactivar` | **Reactivar cliente y su cuenta bancaria por CURP** | `200 OK` |
-| `PATCH` | `/api/clientes/rfc/{rfc}/reactivar` | **Reactivar cliente y su cuenta bancaria por RFC** | `200 OK` |
-| `GET` | `/api/clientes/validar/curp/{curp}` | **Pre-validar sintaxis y disponibilidad de CURP en tiempo real** | `200 OK` |
-| `GET` | `/api/clientes/validar/rfc/{rfc}` | **Pre-validar sintaxis y disponibilidad de RFC en tiempo real** | `200 OK` |
-| `PATCH` | `/api/clientes/curp/{curp}/contacto` | **Actualizar datos de contacto por CURP** (correo y teléfonos) | `200 OK` |
-| `PATCH` | `/api/clientes/rfc/{rfc}/contacto` | **Actualizar datos de contacto por RFC** (correo y teléfonos) | `200 OK` |
-| `GET` | `/api/clientes/curp/{curp}/cuenta` | **Consultar cuenta bancaria y saldo directo por CURP** | `200 OK` |
-| `GET` | `/api/clientes/rfc/{rfc}/cuenta` | **Consultar cuenta bancaria y saldo directo por RFC** | `200 OK` |
-| `GET` | `/api/cuentas/activas` | Consultar listado de cuentas bancarias activas | `200 OK` |
-| `GET` | `/api/cuentas/{numeroCuenta}` | Consultar cuenta por número único de cuenta | `200 OK` |
-| `GET` | `/api/cuentas/{numeroCuenta}/saldo` | Consultar saldos contable y disponible de la tabla `saldos` | `200 OK` |
-| `POST` | `/api/auth/login` | Login seguro con contraseña BCrypt o biometría SHA-256 | `200 OK` |
-| `GET` | `/api/auth/estado/{username}` | Consultar estado `loggeado: true/false` y temporizador de 5s | `200 OK` |
-| `POST` | `/api/auth/logout/{username}` | Cerrar sesión manualmente (`loggeado: false`) | `200 OK` |
-| `GET` | `/api/catalogos` | Consultar todos los catálogos estandarizados del sistema | `200 OK` |
-| `GET` | `/api/catalogos/sexos` | Catálogo de Sexos / Géneros (MASCULINO, FEMENINO, OTRO) | `200 OK` |
-| `GET` | `/api/catalogos/estados-civiles` | Catálogo de Estados Civiles (SOLTERO, CASADO, DIVORCIADO, etc.) | `200 OK` |
-| `GET` | `/api/catalogos/nacionalidades` | Catálogo de Nacionalidades estandarizadas | `200 OK` |
-| `GET` | `/api/catalogos/ocupaciones` | Catálogo de Actividades Laborales estandarizadas | `200 OK` |
-| `GET` | `/api/catalogos/estados-republica` | Catálogo de las 32 Entidades Federativas de México | `200 OK` |
-| `GET` | `/api/catalogos/paises` | Catálogo de Países para Domicilio | `200 OK` |
-| `GET` | `/api/catalogos/tipos-biometria` | Catálogo de Modalidades Biométricas | `200 OK` |
-| `GET` | `/api/catalogos/estatus-cuenta` | Catálogo de Estados de Cuenta Bancaria | `200 OK` |
+Todos los endpoints que reciben parámetros o identificadores consumen los datos exclusivamente mediante **`@RequestBody` (JSON)**. No se utilizan variables de ruta (`{curp}`, `{rfc}`, `{id}`, `{numeroCuenta}`, `{username}`) ni parámetros en la URL (`@PathVariable` / `@RequestParam`), permitiendo una interfaz homogénea y segura en Swagger/OpenAPI y clientes REST.
+
+| Método | Endpoint | Request Body | Descripción | Estado HTTP |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/clientes` | `ClienteRegistrationRequest` | Registrar cliente persona física (no expone `id` en la respuesta) | `201 CREATED` |
+| `GET` | `/api/clientes` | *(Ninguno)* | Consultar el listado completo de clientes | `200 OK` |
+| `GET` | `/api/clientes/activos` | *(Ninguno)* | Consultar únicamente clientes en estatus activo | `200 OK` |
+| `PUT` | `/api/clientes` | `ClienteUpdateRequest` | Actualizar cliente identificándolo por `curp` o `rfc` en el body | `200 OK` |
+| `POST` | `/api/clientes/buscar` | `BuscarClienteRequest` | Buscar cliente por `curp`, `rfc`, `correo`, `numeroCuenta` o `id` | `200 OK` |
+| `POST` | `/api/clientes/desactivar` | `ClienteIdentificadorRequest` | Baja lógica de cliente y cuenta por `curp` o `rfc` | `200 OK` |
+| `DELETE` | `/api/clientes` | `ClienteIdentificadorRequest` | Baja lógica de cliente por `curp` o `rfc` en el body | `200 OK` |
+| `POST` | `/api/clientes/reactivar` | `ClienteIdentificadorRequest` | Reactivar cliente y su cuenta bancaria por `curp` o `rfc` | `200 OK` |
+| `POST` | `/api/clientes/validar` | `ValidarIdentificadorRequest` | Pre-validar sintaxis oficial y disponibilidad de `curp` o `rfc` | `200 OK` |
+| `PATCH` | `/api/clientes/contacto` | `ActualizarContactoRequest` | Actualizar datos de contacto por `curp` o `rfc` (correo y teléfonos) | `200 OK` |
+| `POST` | `/api/clientes/cuenta` | `ClienteIdentificadorRequest` | Consultar cuenta bancaria y saldo del titular por `curp` o `rfc` | `200 OK` |
+| `POST` | `/api/clientes/rango-fechas` | `RangoFechasRequest` | Filtrar clientes por rango de fechas de registro en el body | `200 OK` |
+| `GET` | `/api/cuentas/activas` | *(Ninguno)* | Consultar listado de cuentas bancarias activas | `200 OK` |
+| `POST` | `/api/cuentas/detalle` | `CuentaConsultaRequest` | Consultar cuenta bancaria por número único en el body | `200 OK` |
+| `POST` | `/api/cuentas/saldo` | `CuentaConsultaRequest` | Consultar saldos contable y disponible por número de cuenta en body | `200 OK` |
+| `POST` | `/api/auth/login` | `LoginRequest` | Login seguro con contraseña BCrypt o biometría SHA-256 | `200 OK` |
+| `POST` | `/api/auth/estado` | `UsuarioSesionRequest` | Consultar estado `loggeado: true/false` y temporizador de 5s por body | `200 OK` |
+| `POST` | `/api/auth/logout` | `UsuarioSesionRequest` | Cerrar sesión manualmente (`loggeado: false`) por username en body | `200 OK` |
+| `GET` | `/api/catalogos` | *(Ninguno)* | Consultar todos los catálogos estandarizados del sistema | `200 OK` |
+| `GET` | `/api/catalogos/sexos` | *(Ninguno)* | Catálogo de Sexos / Géneros (MASCULINO, FEMENINO, OTRO) | `200 OK` |
+| `GET` | `/api/catalogos/estados-civiles` | *(Ninguno)* | Catálogo de Estados Civiles (SOLTERO, CASADO, DIVORCIADO, etc.) | `200 OK` |
+| `GET` | `/api/catalogos/nacionalidades` | *(Ninguno)* | Catálogo de Nacionalidades estandarizadas | `200 OK` |
+| `GET` | `/api/catalogos/ocupaciones` | *(Ninguno)* | Catálogo de Actividades Laborales estandarizadas | `200 OK` |
+| `GET` | `/api/catalogos/estados-republica` | *(Ninguno)* | Catálogo de las 32 Entidades Federativas de México | `200 OK` |
+| `GET` | `/api/catalogos/paises` | *(Ninguno)* | Catálogo de Países para Domicilio | `200 OK` |
+| `GET` | `/api/catalogos/tipos-biometria` | *(Ninguno)* | Catálogo de Modalidades Biométricas | `200 OK` |
+| `GET` | `/api/catalogos/estatus-cuenta` | *(Ninguno)* | Catálogo de Estados de Cuenta Bancaria | `200 OK` |
 
 ---
 

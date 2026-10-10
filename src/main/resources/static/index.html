@@ -377,6 +377,74 @@
             padding: 2rem;
             box-shadow: 0 20px 50px rgba(0,0,0,0.5);
         }
+
+        .catalogos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .catalogo-card {
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .catalogo-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-primary);
+        }
+
+        .catalogo-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .catalogo-title {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-main);
+        }
+
+        .catalogo-badge-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            max-height: 220px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .catalogo-pill {
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            color: var(--accent-primary);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .catalogo-pill code {
+            font-size: 0.72rem;
+            opacity: 0.8;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 <body>
@@ -415,6 +483,9 @@
             </button>
             <button class="tab-btn" onclick="switchTab('authTab')">
                 <i class="fa-solid fa-fingerprint"></i> Autenticación Cifrada & Biometría
+            </button>
+            <button class="tab-btn" onclick="switchTab('catalogosTab'); cargarVistaCatalogos();">
+                <i class="fa-solid fa-layer-group"></i> Catálogos del Sistema
             </button>
         </div>
 
@@ -459,24 +530,36 @@
                             <input type="text" id="rfc" class="form-control" placeholder="Ej. PEGJ9005151A2" required maxlength="13">
                         </div>
                         <div class="form-group">
-                            <label>Sexo <span class="required">*</span></label>
+                            <label>Sexo (Catálogo) <span class="required">*</span></label>
                             <select id="sexo" class="form-control" required>
-                                <option value="MASCULINO">MASCULINO</option>
-                                <option value="FEMENINO">FEMENINO</option>
-                                <option value="OTRO">OTRO</option>
+                                <option value="MASCULINO">Masculino</option>
+                                <option value="FEMENINO">Femenino</option>
+                                <option value="OTRO">Otro / No binario</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Nacionalidad <span class="required">*</span></label>
-                            <input type="text" id="nacionalidad" class="form-control" value="Mexicana" required>
+                            <label>Nacionalidad (Catálogo) <span class="required">*</span></label>
+                            <select id="nacionalidad" class="form-control" required>
+                                <option value="Mexicana" selected>Mexicana</option>
+                                <option value="Estadounidense">Estadounidense</option>
+                                <option value="Canadiense">Canadiense</option>
+                                <option value="Española">Española</option>
+                                <option value="Colombiana">Colombiana</option>
+                                <option value="Argentina">Argentina</option>
+                                <option value="Venezolana">Venezolana</option>
+                                <option value="Peruana">Peruana</option>
+                                <option value="Chilena">Chilena</option>
+                                <option value="Otra nacionalidad">Otra nacionalidad</option>
+                            </select>
                         </div>
                         <div class="form-group">
-                            <label>Estado Civil <span class="required">*</span></label>
+                            <label>Estado Civil (Catálogo) <span class="required">*</span></label>
                             <select id="estadoCivil" class="form-control" required>
-                                <option value="SOLTERO">SOLTERO / A</option>
-                                <option value="CASADO">CASADO / A</option>
-                                <option value="DIVORCIADO">DIVORCIADO / A</option>
-                                <option value="VIUDO">VIUDO / A</option>
+                                <option value="SOLTERO">Soltero / a</option>
+                                <option value="CASADO">Casado / a</option>
+                                <option value="DIVORCIADO">Divorciado / a</option>
+                                <option value="VIUDO">Viudo / a</option>
+                                <option value="UNION_LIBRE">Unión Libre</option>
                             </select>
                         </div>
                     </div>
@@ -526,16 +609,57 @@
                             <input type="text" id="municipio" class="form-control" placeholder="Cuauhtémoc" required>
                         </div>
                         <div class="form-group">
-                            <label>Estado <span class="required">*</span></label>
-                            <input type="text" id="estado" class="form-control" placeholder="Ciudad de México" required>
+                            <label>Estado / Entidad Federativa (Catálogo 32 Estados) <span class="required">*</span></label>
+                            <select id="estado" class="form-control" required>
+                                <option value="Aguascalientes">Aguascalientes</option>
+                                <option value="Baja California">Baja California</option>
+                                <option value="Baja California Sur">Baja California Sur</option>
+                                <option value="Campeche">Campeche</option>
+                                <option value="Chiapas">Chiapas</option>
+                                <option value="Chihuahua">Chihuahua</option>
+                                <option value="Ciudad de México" selected>Ciudad de México</option>
+                                <option value="Coahuila">Coahuila</option>
+                                <option value="Colima">Colima</option>
+                                <option value="Durango">Durango</option>
+                                <option value="Estado de México">Estado de México</option>
+                                <option value="Guanajuato">Guanajuato</option>
+                                <option value="Guerrero">Guerrero</option>
+                                <option value="Hidalgo">Hidalgo</option>
+                                <option value="Jalisco">Jalisco</option>
+                                <option value="Michoacán">Michoacán</option>
+                                <option value="Morelos">Morelos</option>
+                                <option value="Nayarit">Nayarit</option>
+                                <option value="Nuevo León">Nuevo León</option>
+                                <option value="Oaxaca">Oaxaca</option>
+                                <option value="Puebla">Puebla</option>
+                                <option value="Querétaro">Querétaro</option>
+                                <option value="Quintana Roo">Quintana Roo</option>
+                                <option value="San Luis Potosí">San Luis Potosí</option>
+                                <option value="Sinaloa">Sinaloa</option>
+                                <option value="Sonora">Sonora</option>
+                                <option value="Tabasco">Tabasco</option>
+                                <option value="Tamaulipas">Tamaulipas</option>
+                                <option value="Tlaxcala">Tlaxcala</option>
+                                <option value="Veracruz">Veracruz</option>
+                                <option value="Yucatán">Yucatán</option>
+                                <option value="Zacatecas">Zacatecas</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>Código Postal (5 dígitos) <span class="required">*</span></label>
                             <input type="text" id="codigoPostal" class="form-control" placeholder="06600" required pattern="\d{5}">
                         </div>
                         <div class="form-group">
-                            <label>País <span class="required">*</span></label>
-                            <input type="text" id="pais" class="form-control" value="México" required>
+                            <label>País (Catálogo) <span class="required">*</span></label>
+                            <select id="pais" class="form-control" required>
+                                <option value="México" selected>México</option>
+                                <option value="Estados Unidos">Estados Unidos</option>
+                                <option value="Canadá">Canadá</option>
+                                <option value="España">España</option>
+                                <option value="Colombia">Colombia</option>
+                                <option value="Argentina">Argentina</option>
+                                <option value="Otro país">Otro país</option>
+                            </select>
                         </div>
                     </div>
 
@@ -545,8 +669,19 @@
                     </div>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Ocupación <span class="required">*</span></label>
-                            <input type="text" id="ocupacion" class="form-control" placeholder="Ingeniero en Sistemas" required>
+                            <label>Ocupación / Actividad (Catálogo Estandarizado) <span class="required">*</span></label>
+                            <select id="ocupacion" class="form-control" required>
+                                <option value="Empleado Sector Privado">Empleado Sector Privado</option>
+                                <option value="Empleado Sector Público">Servidor Público / Sector Público</option>
+                                <option value="Profesionista Independiente / Honorarios">Profesionista Independiente / Honorarios</option>
+                                <option value="Desarrollador / Tecnologías de la Información" selected>Desarrollador / Tecnologías de la Información</option>
+                                <option value="Empresario / Dueño de Negocio">Empresario / Dueño de Negocio</option>
+                                <option value="Comerciante">Comerciante</option>
+                                <option value="Estudiante">Estudiante</option>
+                                <option value="Jubilado / Pensionado">Jubilado / Pensionado</option>
+                                <option value="Dedicado(a) al Hogar">Dedicado(a) al Hogar</option>
+                                <option value="Otro oficio o profesión">Otro oficio o profesión</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>Empresa <span class="required">*</span></label>
@@ -576,11 +711,12 @@
                             <input type="password" id="password" class="form-control" placeholder="••••••••" required minlength="8">
                         </div>
                         <div class="form-group">
-                            <label>Tipo de Biometría <span class="required">*</span></label>
+                            <label>Tipo de Biometría (Catálogo) <span class="required">*</span></label>
                             <select id="tipoBiometria" class="form-control" required>
                                 <option value="HUELLA_DACTILAR">Huella Dactilar</option>
                                 <option value="RECONOCIMIENTO_FACIAL">Reconocimiento Facial</option>
                                 <option value="IRIS">Escaneo de Iris</option>
+                                <option value="PATRON_VASCULAR">Patrón Vascular</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -716,6 +852,34 @@
             </div>
         </div>
 
+        <!-- TAB 5: CATÁLOGOS DEL SISTEMA -->
+        <div id="catalogosTab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">
+                            <i class="fa-solid fa-layer-group"></i> Catálogos Estandarizados del Sistema
+                        </div>
+                        <small style="color: var(--text-muted);">
+                            Control y unificación de datos para evitar discrepancias, errores tipográficos y variaciones arbitrarias.
+                        </small>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span class="badge badge-success" id="catalogosStatusBadge"><i class="fa-solid fa-cloud-arrow-down"></i> Sincronizado API</span>
+                        <button class="btn btn-secondary" onclick="cargarVistaCatalogos(true)">
+                            <i class="fa-solid fa-arrows-rotate"></i> Recargar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="catalogos-grid" id="catalogosGridContainer">
+                    <div style="text-align: center; color: var(--text-muted); grid-column: 1 / -1; padding: 2rem;">
+                        <i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>Cargando catálogos desde el servidor...
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <!-- Modal Editar Cliente -->
@@ -759,8 +923,19 @@
                         <input type="tel" id="editTelefonoMovil" class="form-control" required pattern="\d{10}">
                     </div>
                     <div class="form-group">
-                        <label>Ocupación <span class="required">*</span></label>
-                        <input type="text" id="editOcupacion" class="form-control" required>
+                        <label>Ocupación (Catálogo) <span class="required">*</span></label>
+                        <select id="editOcupacion" class="form-control" required>
+                            <option value="Empleado Sector Privado">Empleado Sector Privado</option>
+                            <option value="Empleado Sector Público">Servidor Público / Sector Público</option>
+                            <option value="Profesionista Independiente / Honorarios">Profesionista Independiente / Honorarios</option>
+                            <option value="Desarrollador / Tecnologías de la Información">Desarrollador / Tecnologías de la Información</option>
+                            <option value="Empresario / Dueño de Negocio">Empresario / Dueño de Negocio</option>
+                            <option value="Comerciante">Comerciante</option>
+                            <option value="Estudiante">Estudiante</option>
+                            <option value="Jubilado / Pensionado">Jubilado / Pensionado</option>
+                            <option value="Dedicado(a) al Hogar">Dedicado(a) al Hogar</option>
+                            <option value="Otro oficio o profesión">Otro oficio o profesión</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>Empresa <span class="required">*</span></label>
@@ -782,13 +957,22 @@
 
     <script>
         let clientesGlobal = [];
+        let catalogosCache = null;
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             
-            event.currentTarget.classList.add('active');
-            document.getElementById(tabId).classList.add('active');
+            const buttons = Array.from(document.querySelectorAll('.tab-btn'));
+            const matchingBtn = buttons.find(b => b.getAttribute('onclick') && b.getAttribute('onclick').includes(tabId));
+            if (matchingBtn) {
+                matchingBtn.classList.add('active');
+            } else if (window.event && window.event.currentTarget) {
+                window.event.currentTarget.classList.add('active');
+            }
+            
+            const target = document.getElementById(tabId);
+            if (target) target.classList.add('active');
         }
 
         function mostrarAlerta(mensaje, esError = false) {
@@ -986,7 +1170,17 @@
             document.getElementById('editFechaNacimiento').value = c.fechaNacimiento;
             document.getElementById('editCorreo').value = c.correo;
             document.getElementById('editTelefonoMovil').value = c.telefonoMovil;
-            document.getElementById('editOcupacion').value = c.laboral.ocupacion;
+            const editOcupSel = document.getElementById('editOcupacion');
+            if (editOcupSel) {
+                editOcupSel.value = c.laboral.ocupacion;
+                if (!editOcupSel.value && c.laboral.ocupacion) {
+                    const opt = document.createElement('option');
+                    opt.value = c.laboral.ocupacion;
+                    opt.textContent = c.laboral.ocupacion;
+                    editOcupSel.appendChild(opt);
+                    editOcupSel.value = c.laboral.ocupacion;
+                }
+            }
             document.getElementById('editEmpresa').value = c.laboral.empresa;
             document.getElementById('editIngresoMensual').value = c.laboral.ingresoMensual;
 
@@ -1073,6 +1267,146 @@
                 mostrarAlerta('Error en autenticación', true);
             }
         }
+
+        async function cargarCatalogosDesdeAPI() {
+            try {
+                const res = await fetch('/api/catalogos');
+                if (!res.ok) throw new Error('Error al consultar catálogos HTTP ' + res.status);
+                const json = await res.json();
+                if (json.exito && json.datos) {
+                    catalogosCache = json.datos;
+                    poblarSelectsDesdeCatalogos(catalogosCache);
+                    const badge = document.getElementById('catalogosStatusBadge');
+                    if (badge) badge.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> Sincronizado API (8 catálogos)`;
+                }
+            } catch (err) {
+                console.warn('Usando opciones predefinidas de catálogos:', err);
+                const badge = document.getElementById('catalogosStatusBadge');
+                if (badge) {
+                    badge.className = 'badge badge-warning';
+                    badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Catálogos Predefinidos`;
+                }
+            }
+        }
+
+        function poblarSelectsDesdeCatalogos(data) {
+            if (!data) return;
+
+            // Sexo
+            if (data.sexos && data.sexos.length > 0) {
+                const sel = document.getElementById('sexo');
+                const prev = sel.value || 'MASCULINO';
+                sel.innerHTML = data.sexos.map(item => `<option value="${item.codigo}">${item.descripcion}</option>`).join('');
+                sel.value = prev;
+            }
+
+            // Nacionalidad
+            if (data.nacionalidades && data.nacionalidades.length > 0) {
+                const sel = document.getElementById('nacionalidad');
+                const prev = sel.value || 'Mexicana';
+                sel.innerHTML = data.nacionalidades.map(item => `<option value="${item.descripcion}">${item.descripcion}</option>`).join('');
+                sel.value = prev;
+            }
+
+            // Estado Civil
+            if (data.estadosCiviles && data.estadosCiviles.length > 0) {
+                const sel = document.getElementById('estadoCivil');
+                const prev = sel.value || 'SOLTERO';
+                sel.innerHTML = data.estadosCiviles.map(item => `<option value="${item.codigo}">${item.descripcion}</option>`).join('');
+                sel.value = prev;
+            }
+
+            // Estado República (32 estados)
+            if (data.estadosRepublica && data.estadosRepublica.length > 0) {
+                const sel = document.getElementById('estado');
+                const prev = sel.value || 'Ciudad de México';
+                sel.innerHTML = data.estadosRepublica.map(item => `<option value="${item.descripcion}">${item.descripcion}</option>`).join('');
+                sel.value = prev;
+            }
+
+            // País
+            if (data.paises && data.paises.length > 0) {
+                const sel = document.getElementById('pais');
+                const prev = sel.value || 'México';
+                sel.innerHTML = data.paises.map(item => `<option value="${item.descripcion}">${item.descripcion}</option>`).join('');
+                sel.value = prev;
+            }
+
+            // Ocupaciones (Formulario y Modal)
+            if (data.ocupaciones && data.ocupaciones.length > 0) {
+                const sel = document.getElementById('ocupacion');
+                const selEdit = document.getElementById('editOcupacion');
+                const opts = data.ocupaciones.map(item => `<option value="${item.descripcion}">${item.descripcion}</option>`).join('');
+                const prev = sel.value || 'Desarrollador / Tecnologías de la Información';
+                sel.innerHTML = opts;
+                sel.value = prev;
+                if (selEdit) {
+                    const prevEdit = selEdit.value;
+                    selEdit.innerHTML = opts;
+                    if (prevEdit) selEdit.value = prevEdit;
+                }
+            }
+
+            // Tipos de Biometría
+            if (data.tiposBiometria && data.tiposBiometria.length > 0) {
+                const sel = document.getElementById('tipoBiometria');
+                const prev = sel.value || 'HUELLA_DACTILAR';
+                sel.innerHTML = data.tiposBiometria.map(item => `<option value="${item.codigo}">${item.descripcion}</option>`).join('');
+                sel.value = prev;
+            }
+        }
+
+        async function cargarVistaCatalogos(forzar = false) {
+            if (!catalogosCache || forzar) {
+                await cargarCatalogosDesdeAPI();
+            }
+            const container = document.getElementById('catalogosGridContainer');
+            if (!container) return;
+
+            if (!catalogosCache) {
+                container.innerHTML = `<div style="text-align: center; color: var(--danger); grid-column: 1 / -1; padding: 2rem;">No se pudieron cargar los catálogos desde el servidor.</div>`;
+                return;
+            }
+
+            const config = [
+                { key: 'estadosRepublica', titulo: 'Entidades Federativas de México', icon: 'fa-map-location-dot', color: '#38bdf8' },
+                { key: 'ocupaciones', titulo: 'Ocupaciones y Giros Laborales', icon: 'fa-briefcase', color: '#818cf8' },
+                { key: 'nacionalidades', titulo: 'Nacionalidades', icon: 'fa-earth-americas', color: '#34d399' },
+                { key: 'estadosCiviles', titulo: 'Estados Civiles', icon: 'fa-ring', color: '#fbbf24' },
+                { key: 'sexos', titulo: 'Género / Sexo (CURP)', icon: 'fa-venus-mars', color: '#f472b6' },
+                { key: 'paises', titulo: 'Países para Domicilio', icon: 'fa-flag', color: '#a78bfa' },
+                { key: 'tiposBiometria', titulo: 'Modalidades Biométricas', icon: 'fa-fingerprint', color: '#38bdf8' },
+                { key: 'estatusCuenta', titulo: 'Estatus de Cuenta Bancaria', icon: 'fa-vault', color: '#34d399' }
+            ];
+
+            container.innerHTML = config.map(c => {
+                const items = catalogosCache[c.key] || [];
+                return `
+                    <div class="catalogo-card">
+                        <div class="catalogo-header">
+                            <span class="catalogo-title">
+                                <i class="fa-solid ${c.icon}" style="color: ${c.color};"></i> ${c.titulo}
+                            </span>
+                            <span class="badge" style="background: rgba(255,255,255,0.08); color: var(--text-main); font-size: 0.75rem;">
+                                ${items.length} opciones
+                            </span>
+                        </div>
+                        <div class="catalogo-badge-list">
+                            ${items.map(it => `
+                                <span class="catalogo-pill" title="Código: ${it.codigo}">
+                                    ${it.descripcion}
+                                    ${it.codigo !== it.descripcion ? `<code>${it.codigo}</code>` : ''}
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            cargarCatalogosDesdeAPI();
+        });
     </script>
 </body>
 </html>

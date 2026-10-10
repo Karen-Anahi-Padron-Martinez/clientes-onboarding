@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -131,8 +132,12 @@ public class CuentaServiceImpl implements CuentaService {
 
         return SaldoResponse.builder()
                 .numeroCuenta(cuenta.getNumeroCuenta())
-                .saldoDisponible(saldoDetalle.getSaldoDisponible())
-                .saldoContable(saldoDetalle.getSaldoContable())
+                .saldoDisponible(saldoDetalle.getSaldoDisponible() != null
+                        ? saldoDetalle.getSaldoDisponible().setScale(2, RoundingMode.HALF_UP)
+                        : null)
+                .saldoContable(saldoDetalle.getSaldoContable() != null
+                        ? saldoDetalle.getSaldoContable().setScale(2, RoundingMode.HALF_UP)
+                        : null)
                 .estatus(cuenta.getEstatus())
                 .titularNombreCompleto(titularNombre)
                 .titularCurp(titularCurp)
@@ -151,7 +156,9 @@ public class CuentaServiceImpl implements CuentaService {
         return CuentaResponse.builder()
                 .id(cuenta.getId())
                 .numeroCuenta(cuenta.getNumeroCuenta())
-                .saldo(cuenta.getSaldo())
+                .saldo(cuenta.getSaldo() != null
+                        ? cuenta.getSaldo().setScale(2, RoundingMode.HALF_UP)
+                        : null)
                 .estatus(cuenta.getEstatus())
                 .fechaCreacion(cuenta.getFechaCreacion())
                 .clienteNombreCompleto(titularNombre)

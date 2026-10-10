@@ -23,9 +23,7 @@ public class SeguridadBiometriaService {
         this.seguridadRepository = seguridadRepository;
     }
 
-    /**
-     * Encripta una contraseña utilizando el algoritmo BCrypt con Salt.
-     */
+
     public String encriptarPassword(String plainPassword) {
         if (plainPassword == null || plainPassword.isBlank()) {
             throw new IllegalArgumentException("La contraseña no puede estar vacía.");
@@ -33,16 +31,12 @@ public class SeguridadBiometriaService {
         return passwordEncoder.encode(plainPassword);
     }
 
-    /**
-     * Valida una contraseña contra su hash BCrypt.
-     */
+
     public boolean validarPassword(String plainPassword, String hashedPassword) {
         return passwordEncoder.matches(plainPassword, hashedPassword);
     }
 
-    /**
-     * Genera un hash criptográfico SHA-256 para plantillas o patrones biométricos.
-     */
+   
     public String generarHashBiometrico(String plantillaBiometrica) {
         if (plantillaBiometrica == null || plantillaBiometrica.isBlank()) {
             throw new IllegalArgumentException("La plantilla biométrica no puede estar vacía.");
@@ -56,9 +50,7 @@ public class SeguridadBiometriaService {
         }
     }
 
-    /**
-     * Valida una plantilla biométrica capturada contra el hash almacenado.
-     */
+   
     public boolean validarBiometria(String plantillaCapturada, String hashAlmacenado) {
         if (plantillaCapturada == null || hashAlmacenado == null) {
             return false;
@@ -67,9 +59,7 @@ public class SeguridadBiometriaService {
         return hashCalculado.equalsIgnoreCase(hashAlmacenado);
     }
 
-    /**
-     * Crea una entidad de seguridad biométrica con credenciales cifradas.
-     */
+  
     public DatosSeguridadBiometria crearDatosSeguridad(String username, String rawPassword, TipoBiometria tipoBiometria, String rawBiometria) {
         if (seguridadRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("El nombre de usuario '" + username + "' ya está registrado");

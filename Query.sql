@@ -1,3 +1,16 @@
+-- =============================================================================
+-- SCRIPT DE BASE DE DATOS: FINANCIAL ONBOARDING SYSTEM (NORMALIZADO)
+-- PostgreSQL 15+ / 16+ / 17+ / 18+
+-- REGLAS ARQUITECTURALES:
+--  - Sin tipos VARCHAR, uso exclusivo de TEXT.
+--  - Tablas de catálogo normalizadas con llaves foráneas íntegras.
+--  - Datos semilla precargados para catálogos oficiales.
+-- =============================================================================
+
+-- Descomentar si se ejecuta desde cero para crear la base:
+-- CREATE DATABASE onboarding;
+-- \c onboarding;
+
 DROP TABLE IF EXISTS saldos CASCADE;
 DROP TABLE IF EXISTS clientes CASCADE;
 DROP TABLE IF EXISTS domicilios CASCADE;
@@ -10,6 +23,9 @@ DROP TABLE IF EXISTS cat_ocupaciones CASCADE;
 DROP TABLE IF EXISTS cat_estados_republica CASCADE;
 DROP TABLE IF EXISTS cat_paises CASCADE;
 
+-- =============================================================================
+-- 1. TABLAS DE CATÁLOGOS NORMALIZADOS
+-- =============================================================================
 
 -- Catálogo de Sexos
 CREATE TABLE cat_sexos (
@@ -53,8 +69,11 @@ CREATE TABLE cat_paises (
     descripcion TEXT NOT NULL
 );
 
+-- =============================================================================
+-- 2. TABLAS PRINCIPALES DEL SISTEMA
+-- =============================================================================
 
--- 1. TABLA DOMICILIOS (Relacionada con cat_estados_republica y cat_paises)
+-- 1. TABLA DOMICILIOS
 CREATE TABLE domicilios (
     id BIGSERIAL PRIMARY KEY,
     calle TEXT NOT NULL,
@@ -104,7 +123,7 @@ CREATE TABLE datos_seguridad_biometria (
     CONSTRAINT chk_tipo_biometria CHECK (tipo_biometria IN ('HUELLA_DACTILAR', 'RECONOCIMIENTO_FACIAL', 'IRIS', 'PATRON_VASCULAR'))
 );
 
--- 5. TABLA CLIENTES (Relacionada con catálogos y entidades satélite)
+-- 5. TABLA CLIENTES
 CREATE TABLE clientes (
     id BIGSERIAL PRIMARY KEY,
     nombre TEXT NOT NULL,
@@ -128,7 +147,7 @@ CREATE TABLE clientes (
     domicilio_id BIGINT NOT NULL UNIQUE,
     cuenta_id BIGINT NOT NULL UNIQUE,
     seguridad_id BIGINT UNIQUE,
-    
+
     -- Relaciones (Foreign Keys)
     CONSTRAINT fk_cliente_sexo FOREIGN KEY (sexo_id) REFERENCES cat_sexos(id),
     CONSTRAINT fk_cliente_nacionalidad FOREIGN KEY (nacionalidad_id) REFERENCES cat_nacionalidades(id),
@@ -137,7 +156,7 @@ CREATE TABLE clientes (
     CONSTRAINT fk_cliente_domicilio FOREIGN KEY (domicilio_id) REFERENCES domicilios(id) ON DELETE CASCADE,
     CONSTRAINT fk_cliente_cuenta FOREIGN KEY (cuenta_id) REFERENCES cuentas(id) ON DELETE CASCADE,
     CONSTRAINT fk_cliente_seguridad FOREIGN KEY (seguridad_id) REFERENCES datos_seguridad_biometria(id) ON DELETE CASCADE,
-    
+
     -- Restricciones de Negocio
     CONSTRAINT chk_curp_formato CHECK (curp ~ '^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]{2}$'),
     CONSTRAINT chk_rfc_formato CHECK (rfc ~ '^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}$'),
@@ -159,3 +178,98 @@ CREATE INDEX idx_clientes_estado_civil ON clientes(estado_civil_id);
 CREATE INDEX idx_clientes_ocupacion ON clientes(ocupacion_id);
 CREATE INDEX idx_domicilios_estado ON domicilios(estado_id);
 CREATE INDEX idx_domicilios_pais ON domicilios(pais_id);
+
+-- =============================================================================
+-- 3. INSERTS SEMILLA PARA CATÁLOGOS NORMALIZADOS
+-- =============================================================================
+
+-- Catálogo de Sexos
+INSERT INTO cat_sexos (codigo, descripcion) VALUES
+('MASCULINO', 'Masculino'),
+('FEMENINO', 'Femenino'),
+('OTRO', 'Otro / No binario')
+ON CONFLICT (codigo) DO NOTHING;
+
+-- Catálogo de Estados Civiles
+INSERT INTO cat_estados_civiles (codigo, descripcion) VALUES
+('SOLTERO', 'Soltero / a'),
+('CASADO', 'Casado / a'),
+('DIVORCIADO', 'Divorciado / a'),
+('VIUDO', 'Viudo / a'),
+('UNION_LIBRE', 'Unión Libre')
+ON CONFLICT (codigo) DO NOTHING;
+
+-- Catálogo de Nacionalidades
+INSERT INTO cat_nacionalidades (codigo, descripcion) VALUES
+('MEXICANA', 'Mexicana'),
+('ESTADOUNIDENSE', 'Estadounidense'),
+('CANADIENSE', 'Canadiense'),
+('ESPANYOLA', 'Española'),
+('COLOMBIANA', 'Colombiana'),
+('ARGENTINA', 'Argentina'),
+('VENEZOLANA', 'Venezolana'),
+('PERUANA', 'Peruana'),
+('CHILENA', 'Chilena'),
+('OTRA', 'Otra nacionalidad')
+ON CONFLICT (codigo) DO NOTHING;
+
+-- Catálogo de Ocupaciones
+INSERT INTO cat_ocupaciones (codigo, descripcion) VALUES
+('EMPLEADO_SECTOR_PRIVADO', 'Empleado Sector Privado'),
+('EMPLEADO_SECTOR_PUBLICO', 'Servidor Público / Sector Público'),
+('PROFESIONISTA_INDEPENDIENTE', 'Profesionista Independiente / Honorarios'),
+('DESARROLLADOR_TI', 'Desarrollador / Tecnologías de la Información'),
+('EMPRESARIO', 'Empresario / Dueño de Negocio'),
+('COMERCIANTE', 'Comerciante'),
+('ESTUDIANTE', 'Estudiante'),
+('JUBILADO_PENSIONADO', 'Jubilado / Pensionado'),
+('DEDICADO_AL_HOGAR', 'Dedicado(a) al Hogar'),
+('OTRO', 'Otro oficio o profesión')
+ON CONFLICT (codigo) DO NOTHING;
+
+-- Catálogo de Estados de la República Mexicana
+INSERT INTO cat_estados_republica (codigo, descripcion) VALUES
+('AGUASCALIENTES', 'Aguascalientes'),
+('BAJA_CALIFORNIA', 'Baja California'),
+('BAJA_CALIFORNIA_SUR', 'Baja California Sur'),
+('CAMPECHE', 'Campeche'),
+('CHIAPAS', 'Chiapas'),
+('CHIHUAHUA', 'Chihuahua'),
+('CIUDAD_DE_MEXICO', 'Ciudad de México'),
+('COAHUILA', 'Coahuila'),
+('COLIMA', 'Colima'),
+('DURANGO', 'Durango'),
+('ESTADO_DE_MEXICO', 'Estado de México'),
+('GUANAJUATO', 'Guanajuato'),
+('GUERRERO', 'Guerrero'),
+('HIDALGO', 'Hidalgo'),
+('JALISCO', 'Jalisco'),
+('MICHOACAN', 'Michoacán'),
+('MORELOS', 'Morelos'),
+('NAYARIT', 'Nayarit'),
+('NUEVO_LEON', 'Nuevo León'),
+('OAXACA', 'Oaxaca'),
+('PUEBLA', 'Puebla'),
+('QUERETARO', 'Querétaro'),
+('QUINTANA_ROO', 'Quintana Roo'),
+('SAN_LUIS_POTOSI', 'San Luis Potosí'),
+('SINALOA', 'Sinaloa'),
+('SONORA', 'Sonora'),
+('TABASCO', 'Tabasco'),
+('TAMAULIPAS', 'Tamaulipas'),
+('TLAXCALA', 'Tlaxcala'),
+('VERACRUZ', 'Veracruz'),
+('YUCATAN', 'Yucatán'),
+('ZACATECAS', 'Zacatecas')
+ON CONFLICT (codigo) DO NOTHING;
+
+-- Catálogo de Países
+INSERT INTO cat_paises (codigo, descripcion) VALUES
+('MEXICO', 'México'),
+('ESTADOS_UNIDOS', 'Estados Unidos'),
+('CANADA', 'Canadá'),
+('ESPANYA', 'España'),
+('COLOMBIA', 'Colombia'),
+('ARGENTINA', 'Argentina'),
+('OTRO', 'Otro país')
+ON CONFLICT (codigo) DO NOTHING;

@@ -1,5 +1,7 @@
 package com.kapm.onboarding_clientes.dto.response;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.kapm.onboarding_clientes.config.JacksonConfig;
 import com.kapm.onboarding_clientes.model.EstatusCuenta;
 import lombok.*;
 
@@ -14,7 +16,10 @@ import java.time.LocalDateTime;
 public class SaldoResponse {
 
     private String numeroCuenta;
+    @JsonSerialize(using = JacksonConfig.BigDecimalTwoDecimalsSerializer.class)
     private BigDecimal saldoDisponible;
+
+    @JsonSerialize(using = JacksonConfig.BigDecimalTwoDecimalsSerializer.class)
     private BigDecimal saldoContable;
     private EstatusCuenta estatus;
     private String titularNombreCompleto;

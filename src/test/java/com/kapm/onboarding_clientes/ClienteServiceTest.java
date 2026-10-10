@@ -2,7 +2,7 @@ package com.kapm.onboarding_clientes;
 
 import com.kapm.onboarding_clientes.dto.request.*;
 import com.kapm.onboarding_clientes.dto.response.ClienteResponse;
-import com.kapm.onboarding_clientes.dto.response.SaldoResponse;
+import com.kapm.onboarding_clientes.dto.response.ValidacionIdentificadorResponse;
 import com.kapm.onboarding_clientes.exception.CurpDuplicadaException;
 import com.kapm.onboarding_clientes.exception.ReglaNegocioException;
 import com.kapm.onboarding_clientes.model.EstatusCuenta;
@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -74,23 +73,98 @@ class ClienteServiceTest {
     }
 
     @Test
-    @DisplayName("Debe registrar cliente exitosamente y crear cuenta bancaria única con saldo asignado")
+    @DisplayName("Debe registrar cliente exitosamente sin exponer ID en la respuesta y crear cuenta bancaria")
     void debeRegistrarClienteExitosamente() {
         ClienteRegistrationRequest request = crearRequestValido("PEGJ900515HDFRMN01", "PEGJ9005151A2", "juan.perez@email.com");
         
         ClienteResponse response = clienteService.registrarCliente(request);
 
-        assertNotNull(response.getId());
+        // Requerimiento: el response del POST no debe mandar el ID
+        assertNull(response.getId(), "El response del POST de cliente no debe mandar el ID");
         assertEquals("Juan", response.getNombre());
         assertEquals("PEGJ900515HDFRMN01", response.getCurp());
         assertTrue(response.getActivo());
         
-        // Verificar cuenta bancaria autogenerada
+        // Verificar cuenta bancaria autogenerada (tampoco expone ID de cuenta)
         assertNotNull(response.getCuenta());
+        assertNull(response.getCuenta().getId(), "El response tampoco expone el ID de la cuenta");
         assertNotNull(response.getCuenta().getNumeroCuenta());
         assertEquals(10, response.getCuenta().getNumeroCuenta().length());
         assertEquals(new BigDecimal("2500.00"), response.getCuenta().getSaldo());
         assertEquals(EstatusCuenta.ACTIVA, response.getCuenta().getEstatus());
+    }
+
+    @Test
+    @DisplayName("Debe actualizar cliente por CURP exitosamente")
+    void debeActualizarClientePorCurp() {
+        ClienteRegistrationRequest reg = crearRequestValido("PEGJ900515HDFRMN90", "PEGJ9005151A9", "actualizar.curp@email.com");
+        clienteService.registrarCliente(reg);
+
+        ClienteUpdateRequest updateReq = ClienteUpdateRequest.builder()
+                .nombre("Juan Actualizado")
+                .segundoNombre("Carlos")
+                .apellidoPaterno("Pérez")
+                .apellidoMaterno("Gómez")
+                .fechaNacimiento(LocalDate.of(1990, 5, 15))
+                .curp("PEGJ900515HDFRMN90")
+                .rfc("PEGJ9005151A9")
+                .sexo("MASCULINO")
+                .nacionalidad("Mexicana")
+                .estadoCivil("CASADO")
+                .correo("nuevo.correo@email.com")
+                .telefonoMovil("5599887766")
+                .domicilio(reg.getDomicilio())
+                .laboral(reg.getLaboral())
+                .build();
+
+        ClienteResponse actualizado = clienteService.actualizarClientePorCurp("PEGJ900515HDFRMN90", updateReq);
+
+        assertEquals("Juan Actualizado", actualizado.getNombre());
+        assertEquals("nuevo.correo@email.com", actualizado.getCorreo());
+        assertEquals("5599887766", actualizado.getTelefonoMovil());
+    }
+
+    @Test
+    @DisplayName("Debe rechazar actualización con CURP inválida")
+    void debeRechazarActualizacionCurpInvalida() {
+        ClienteUpdateRequest updateReq = ClienteUpdateRequest.builder()
+                .nombre("Test")
+                .apellidoPaterno("Perez")
+                .apellidoMaterno("Lopez")
+                .fechaNacimiento(LocalDate.of(1990, 1, 1))
+                .sexo("MASCULINO")
+                .nacionalidad("Mexicana")
+                .estadoCivil("SOLTERO")
+                .correo("test@email.com")
+                .telefonoMovil("5512345678")
+                .domicilio(DomicilioDTO.builder().calle("Calle").numeroExterior("1").colonia("Col").municipio("Mun").estado("Ciudad de México").codigoPostal("01000").pais("México").build())
+                .laboral(DatosLaboralesDTO.builder().ocupacion("Empleado Sector Privado").empresa("Emp").ingresoMensual(BigDecimal.TEN).build())
+                .build();
+
+        assertThrows(ReglaNegocioException.class, () -> {
+            clienteService.actualizarClientePorCurp("CURP_INVALIDA", updateReq);
+        });
+    }
+
+    @Test
+    @DisplayName("Debe validar disponibilidad de CURP y RFC correctamente")
+    void debeValidarDisponibilidadCurpYRfc() {
+        String curp = "PEGJ900515HDFRMN88";
+        String rfc = "PEGJ9005151A8";
+
+        ValidacionIdentificadorResponse valCurpAntes = clienteService.validarDisponibilidadCurp(curp);
+        assertTrue(valCurpAntes.isFormatoValido());
+        assertTrue(valCurpAntes.isDisponible());
+
+        clienteService.registrarCliente(crearRequestValido(curp, rfc, "disponibilidad@email.com"));
+
+        ValidacionIdentificadorResponse valCurpDespues = clienteService.validarDisponibilidadCurp(curp);
+        assertTrue(valCurpDespues.isFormatoValido());
+        assertFalse(valCurpDespues.isDisponible());
+
+        ValidacionIdentificadorResponse valRfcDespues = clienteService.validarDisponibilidadRfc(rfc);
+        assertTrue(valRfcDespues.isFormatoValido());
+        assertFalse(valRfcDespues.isDisponible());
     }
 
     @Test
@@ -120,15 +194,20 @@ class ClienteServiceTest {
     }
 
     @Test
-    @DisplayName("Debe ejecutar baja lógica de cliente y desactivar su cuenta")
-    void debeRealizarBajaLogica() {
-        ClienteRegistrationRequest request = crearRequestValido("PEGJ900515HDFRMN04", "PEGJ9005151A6", "baja@email.com");
-        ClienteResponse creado = clienteService.registrarCliente(request);
+    @DisplayName("Debe ejecutar baja lógica de cliente por CURP y reactivarlo")
+    void debeRealizarBajaLogicaYReactivacionPorCurp() {
+        String curp = "PEGJ900515HDFRMN04";
+        ClienteRegistrationRequest request = crearRequestValido(curp, "PEGJ9005151A6", "baja@email.com");
+        clienteService.registrarCliente(request);
 
-        clienteService.desactivarCliente(creado.getId());
+        clienteService.desactivarClientePorCurp(curp);
 
-        ClienteResponse inactivo = clienteService.obtenerClientePorId(creado.getId());
+        ClienteResponse inactivo = clienteService.obtenerClientePorCurp(curp);
         assertFalse(inactivo.getActivo());
         assertEquals(EstatusCuenta.INACTIVA, inactivo.getCuenta().getEstatus());
+
+        ClienteResponse reactivado = clienteService.reactivarClientePorCurp(curp);
+        assertTrue(reactivado.getActivo());
+        assertEquals(EstatusCuenta.ACTIVA, reactivado.getCuenta().getEstatus());
     }
 }

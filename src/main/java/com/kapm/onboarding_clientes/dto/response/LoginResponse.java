@@ -1,5 +1,6 @@
 package com.kapm.onboarding_clientes.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.kapm.onboarding_clientes.model.TipoBiometria;
 import lombok.*;
 
@@ -10,6 +11,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class LoginResponse {
 
     private boolean autenticado;

@@ -1,8 +1,8 @@
 {
 	"info": {
 		"_postman_id": "b3e91402-9901-4972-8822-bc5190a4211f",
-		"name": "Onboarding Clientes y Cuentas API (Con Temporizador 5s e Inactividad)",
-		"description": "Colección completa de Postman para probar el API RESTful de registro de clientes personas físicas, tabla de saldos, eliminación de VARCHAR (uso de TEXT), autenticación biométrica cifrada y control de sesión con temporizador de inactividad de 5 segundos (loggeado = true/false).",
+		"name": "Onboarding Clientes y Cuentas API (Con Temporizador 5s, Validaciones CURP/RFC)",
+		"description": "Colección completa de Postman para probar el API RESTful de registro de clientes personas físicas, actualización y baja por CURP y RFC, tabla de saldos, eliminación de VARCHAR (uso de TEXT), autenticación biométrica cifrada y control de sesión con temporizador de inactividad de 5 segundos.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -10,7 +10,7 @@
 			"name": "Clientes",
 			"item": [
 				{
-					"name": "1. Registrar Nuevo Cliente (POST)",
+					"name": "1. Registrar Nuevo Cliente (POST - Sin exponer ID)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -55,19 +55,259 @@
 					"response": []
 				},
 				{
-					"name": "3. Consultar Cliente por ID (GET - Incluye loggeado true/false)",
+					"name": "3. Consultar Clientes Activos (GET)",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/clientes/1",
+							"raw": "{{base_url}}/api/clientes/activos",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
 								"clientes",
-								"1"
+								"activos"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Consultar Cliente por CURP (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/clientes/curp/MEHC920824HDFRMN09",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clientes",
+								"curp",
+								"MEHC920824HDFRMN09"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Consultar Cliente por RFC (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/clientes/rfc/MEHC9208243A8",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clientes",
+								"rfc",
+								"MEHC9208243A8"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Actualizar Cliente por CURP usando Request (PUT)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre\": \"Carlos\",\n  \"segundoNombre\": \"Alberto\",\n  \"apellidoPaterno\": \"Mendoza\",\n  \"apellidoMaterno\": \"Hernández\",\n  \"fechaNacimiento\": \"1992-08-24\",\n  \"curp\": \"MEHC920824HDFRMN09\",\n  \"rfc\": \"MEHC9208243A8\",\n  \"sexo\": \"MASCULINO\",\n  \"nacionalidad\": \"Mexicana\",\n  \"estadoCivil\": \"CASADO\",\n  \"correo\": \"carlos.mendoza.actualizado@email.com\",\n  \"telefonoMovil\": \"5588887777\",\n  \"telefonoAlternativo\": \"5511112222\",\n  \"domicilio\": {\n    \"calle\": \"Av. Paseo de la Reforma\",\n    \"numeroExterior\": \"222\",\n    \"numeroInterior\": \"Depto 12\",\n    \"colonia\": \"Juárez\",\n    \"municipio\": \"Cuauhtémoc\",\n    \"estado\": \"Ciudad de México\",\n    \"codigoPostal\": \"06600\",\n    \"pais\": \"México\"\n  },\n  \"laboral\": {\n    \"ocupacion\": \"Arquitecto de Software\",\n    \"empresa\": \"Tech Global Mexico\",\n    \"ingresoMensual\": 58000.00\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/clientes?curp=MEHC920824HDFRMN09",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clientes"
+							],
+							"query": [
+								{
+									"key": "curp",
+									"value": "MEHC920824HDFRMN09"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Actualizar Cliente por RFC usando Request (PUT)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre\": \"Carlos\",\n  \"segundoNombre\": \"Alberto\",\n  \"apellidoPaterno\": \"Mendoza\",\n  \"apellidoMaterno\": \"Hernández\",\n  \"fechaNacimiento\": \"1992-08-24\",\n  \"curp\": \"MEHC920824HDFRMN09\",\n  \"rfc\": \"MEHC9208243A8\",\n  \"sexo\": \"MASCULINO\",\n  \"nacionalidad\": \"Mexicana\",\n  \"estadoCivil\": \"SOLTERO\",\n  \"correo\": \"carlos.mendoza.rfc@email.com\",\n  \"telefonoMovil\": \"5599887766\",\n  \"telefonoAlternativo\": null,\n  \"domicilio\": {\n    \"calle\": \"Av. Insurgentes Sur\",\n    \"numeroExterior\": \"456\",\n    \"numeroInterior\": null,\n    \"colonia\": \"Roma Norte\",\n    \"municipio\": \"Cuauhtémoc\",\n    \"estado\": \"Ciudad de México\",\n    \"codigoPostal\": \"06700\",\n    \"pais\": \"México\"\n  },\n  \"laboral\": {\n    \"ocupacion\": \"Desarrollador / Tecnologías de la Información\",\n    \"empresa\": \"Fintech S.A.\",\n    \"ingresoMensual\": 48000.00\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/clientes?rfc=MEHC9208243A8",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clientes"
+							],
+							"query": [
+								{
+									"key": "rfc",
+									"value": "MEHC9208243A8"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8. Pre-validar Disponibilidad de CURP (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/clientes/validar/curp/MEHC920824HDFRMN09",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clientes",
+								"validar",
+								"curp",
+								"MEHC920824HDFRMN09"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "9. Pre-validar Disponibilidad de RFC (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/clientes/validar/rfc/MEHC9208243A8",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clientes",
+								"validar",
+								"rfc",
+								"MEHC9208243A8"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "10. Actualizar Solo Contacto por CURP (PATCH)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"correo\": \"carlos.nuevo.contacto@email.com\",\n  \"telefonoMovil\": \"5511223344\",\n  \"telefonoAlternativo\": \"5599881122\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/clientes/curp/MEHC920824HDFRMN09/contacto",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clientes",
+								"curp",
+								"MEHC920824HDFRMN09",
+								"contacto"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "11. Consultar Cuenta Bancaria por CURP (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/clientes/curp/MEHC920824HDFRMN09/cuenta",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clientes",
+								"curp",
+								"MEHC920824HDFRMN09",
+								"cuenta"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "12. Baja Lógica de Cliente por CURP (DELETE)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/clientes/curp/MEHC920824HDFRMN09",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clientes",
+								"curp",
+								"MEHC920824HDFRMN09"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "13. Reactivar Cliente por CURP (PATCH)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/clientes/curp/MEHC920824HDFRMN09/reactivar",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clientes",
+								"curp",
+								"MEHC920824HDFRMN09",
+								"reactivar"
 							]
 						}
 					},
@@ -79,7 +319,26 @@
 			"name": "Saldos y Cuentas Bancarias",
 			"item": [
 				{
-					"name": "1. Consultar Saldo Disponible y Contable (Tabla Saldos)",
+					"name": "1. Consultar Cuentas Activas (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/cuentas/activas",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cuentas",
+								"activas"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Consultar Saldo Disponible y Contable (GET)",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -166,6 +425,29 @@
 								"auth",
 								"logout",
 								"carlos_mendoza"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Catálogos Estandarizados",
+			"item": [
+				{
+					"name": "1. Consultar Todos los Catálogos (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/catalogos",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"catalogos"
 							]
 						}
 					},

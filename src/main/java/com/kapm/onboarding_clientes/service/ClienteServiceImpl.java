@@ -1,5 +1,6 @@
 package com.kapm.onboarding_clientes.service;
 
+import com.kapm.onboarding_clientes.dto.request.ActualizarContactoRequest;
 import com.kapm.onboarding_clientes.dto.request.ClienteRegistrationRequest;
 import com.kapm.onboarding_clientes.dto.request.ClienteUpdateRequest;
 import com.kapm.onboarding_clientes.dto.request.DatosLaboralesDTO;
@@ -8,11 +9,13 @@ import com.kapm.onboarding_clientes.dto.request.LoginRequest;
 import com.kapm.onboarding_clientes.dto.response.ClienteResponse;
 import com.kapm.onboarding_clientes.dto.response.CuentaResponse;
 import com.kapm.onboarding_clientes.dto.response.LoginResponse;
+import com.kapm.onboarding_clientes.dto.response.ValidacionIdentificadorResponse;
 import com.kapm.onboarding_clientes.exception.*;
 import com.kapm.onboarding_clientes.model.*;
 import com.kapm.onboarding_clientes.model.catalogo.*;
 import com.kapm.onboarding_clientes.repository.ClienteRepository;
 import com.kapm.onboarding_clientes.repository.DatosSeguridadBiometriaRepository;
+import com.kapm.onboarding_clientes.validation.CurpRfcUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,13 +47,18 @@ public class ClienteServiceImpl implements ClienteService {
         
         validarMayoriaDeEdad(request.getFechaNacimiento());
 
-        
-        String curp = request.getCurp().trim().toUpperCase();
+        String curp = CurpRfcUtil.sanitizarCurp(request.getCurp());
+        if (!CurpRfcUtil.esCurpValida(curp)) {
+            throw new ReglaNegocioException("El formato de la CURP es inválido (debe cumplir los 18 caracteres oficiales): " + request.getCurp());
+        }
         if (clienteRepository.existsByCurp(curp)) {
             throw new CurpDuplicadaException(curp);
         }
 
-        String rfc = request.getRfc().trim().toUpperCase();
+        String rfc = CurpRfcUtil.sanitizarRfc(request.getRfc());
+        if (!CurpRfcUtil.esRfcValido(rfc)) {
+            throw new ReglaNegocioException("El formato del RFC es inválido (debe contener 12 o 13 caracteres): " + request.getRfc());
+        }
         if (clienteRepository.existsByRfc(rfc)) {
             throw new RfcDuplicadoException(rfc);
         }
@@ -112,11 +120,19 @@ public class ClienteServiceImpl implements ClienteService {
 
         Cliente clienteGuardado = clienteRepository.save(cliente);
 
-        return mapearAClienteResponse(clienteGuardado);
+        ClienteResponse response = mapearAClienteResponse(clienteGuardado);
+        
+        // REQUERIMIENTO: El response del POST de usuarios/clientes no debe mandar el id
+        response.setId(null);
+        if (response.getCuenta() != null) {
+            response.getCuenta().setId(null);
+        }
+
+        return response;
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public List<ClienteResponse> obtenerTodosLosClientes() {
         return clienteRepository.findAll().stream()
                 .map(this::mapearAClienteResponse)
@@ -124,7 +140,7 @@ public class ClienteServiceImpl implements ClienteService {
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public List<ClienteResponse> obtenerClientesActivos() {
         return clienteRepository.findByActivoTrue().stream()
                 .map(this::mapearAClienteResponse)
@@ -142,16 +158,24 @@ public class ClienteServiceImpl implements ClienteService {
     @Override
     @Transactional
     public ClienteResponse obtenerClientePorCurp(String curp) {
-        Cliente cliente = clienteRepository.findByCurp(curp.trim().toUpperCase())
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con CURP: " + curp));
+        if (!CurpRfcUtil.esCurpValida(curp)) {
+            throw new ReglaNegocioException("La CURP proporcionada no tiene un formato válido (18 caracteres): " + curp);
+        }
+        String curpLimpia = CurpRfcUtil.sanitizarCurp(curp);
+        Cliente cliente = clienteRepository.findByCurp(curpLimpia)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con CURP: " + curpLimpia));
         return mapearAClienteResponse(cliente);
     }
 
     @Override
     @Transactional
     public ClienteResponse obtenerClientePorRfc(String rfc) {
-        Cliente cliente = clienteRepository.findByRfc(rfc.trim().toUpperCase())
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con RFC: " + rfc));
+        if (!CurpRfcUtil.esRfcValido(rfc)) {
+            throw new ReglaNegocioException("El RFC proporcionado no tiene un formato válido (12 o 13 caracteres): " + rfc);
+        }
+        String rfcLimpio = CurpRfcUtil.sanitizarRfc(rfc);
+        Cliente cliente = clienteRepository.findByRfc(rfcLimpio)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con RFC: " + rfcLimpio));
         return mapearAClienteResponse(cliente);
     }
 
@@ -172,7 +196,7 @@ public class ClienteServiceImpl implements ClienteService {
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public List<ClienteResponse> obtenerClientesPorRangoFechas(LocalDate fechaInicio, LocalDate fechaFin) {
         if (fechaInicio == null || fechaFin == null) {
             throw new ReglaNegocioException("Las fechas de inicio y fin son obligatorias para la consulta por rango");
@@ -194,16 +218,68 @@ public class ClienteServiceImpl implements ClienteService {
     public ClienteResponse actualizarCliente(Long id, ClienteUpdateRequest request) {
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new ClienteNoEncontradoException(id));
+        return ejecutarActualizacion(cliente, request);
+    }
 
-        if (!cliente.getActivo()) {
+    @Override
+    @Transactional
+    public ClienteResponse actualizarClientePorCurp(String curp, ClienteUpdateRequest request) {
+        if (!CurpRfcUtil.esCurpValida(curp)) {
+            throw new ReglaNegocioException("La CURP proporcionada para actualización no tiene un formato válido (18 caracteres): " + curp);
+        }
+        String curpLimpia = CurpRfcUtil.sanitizarCurp(curp);
+        Cliente cliente = clienteRepository.findByCurp(curpLimpia)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con CURP: " + curpLimpia));
+        return ejecutarActualizacion(cliente, request);
+    }
+
+    @Override
+    @Transactional
+    public ClienteResponse actualizarClientePorRfc(String rfc, ClienteUpdateRequest request) {
+        if (!CurpRfcUtil.esRfcValido(rfc)) {
+            throw new ReglaNegocioException("El RFC proporcionado para actualización no tiene un formato válido (12 o 13 caracteres): " + rfc);
+        }
+        String rfcLimpio = CurpRfcUtil.sanitizarRfc(rfc);
+        Cliente cliente = clienteRepository.findByRfc(rfcLimpio)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con RFC: " + rfcLimpio));
+        return ejecutarActualizacion(cliente, request);
+    }
+
+    private ClienteResponse ejecutarActualizacion(Cliente cliente, ClienteUpdateRequest request) {
+        if (!Boolean.TRUE.equals(cliente.getActivo())) {
             throw new ReglaNegocioException("No se puede actualizar la información de un cliente dado de baja (inactivo)");
         }
 
         validarMayoriaDeEdad(request.getFechaNacimiento());
 
+        // Validación de correo único
         String nuevoCorreo = request.getCorreo().trim().toLowerCase();
-        if (!nuevoCorreo.equalsIgnoreCase(cliente.getCorreo()) && clienteRepository.existsByCorreo(nuevoCorreo)) {
+        if (!nuevoCorreo.equalsIgnoreCase(cliente.getCorreo()) && clienteRepository.existsByCorreoAndIdNot(nuevoCorreo, cliente.getId())) {
             throw new CorreoDuplicadoException(nuevoCorreo);
+        }
+
+        // Validación y actualización opcional de CURP
+        if (request.getCurp() != null && !request.getCurp().isBlank()) {
+            String nuevoCurp = CurpRfcUtil.sanitizarCurp(request.getCurp());
+            if (!CurpRfcUtil.esCurpValida(nuevoCurp)) {
+                throw new ReglaNegocioException("El nuevo CURP proporcionado tiene un formato inválido (18 caracteres oficiales): " + request.getCurp());
+            }
+            if (!nuevoCurp.equalsIgnoreCase(cliente.getCurp()) && clienteRepository.existsByCurpAndIdNot(nuevoCurp, cliente.getId())) {
+                throw new CurpDuplicadaException(nuevoCurp);
+            }
+            cliente.setCurp(nuevoCurp);
+        }
+
+        // Validación y actualización opcional de RFC
+        if (request.getRfc() != null && !request.getRfc().isBlank()) {
+            String nuevoRfc = CurpRfcUtil.sanitizarRfc(request.getRfc());
+            if (!CurpRfcUtil.esRfcValido(nuevoRfc)) {
+                throw new ReglaNegocioException("El nuevo RFC proporcionado tiene un formato inválido (12 o 13 caracteres): " + request.getRfc());
+            }
+            if (!nuevoRfc.equalsIgnoreCase(cliente.getRfc()) && clienteRepository.existsByRfcAndIdNot(nuevoRfc, cliente.getId())) {
+                throw new RfcDuplicadoException(nuevoRfc);
+            }
+            cliente.setRfc(nuevoRfc);
         }
 
         // Búsqueda y asociación de entidades de catálogo (Foreign Keys)
@@ -270,6 +346,234 @@ public class ClienteServiceImpl implements ClienteService {
 
     @Override
     @Transactional
+    public void desactivarClientePorCurp(String curp) {
+        if (!CurpRfcUtil.esCurpValida(curp)) {
+            throw new ReglaNegocioException("Formato de CURP inválido: " + curp);
+        }
+        String curpLimpia = CurpRfcUtil.sanitizarCurp(curp);
+        Cliente cliente = clienteRepository.findByCurp(curpLimpia)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con CURP: " + curpLimpia));
+        desactivarCliente(cliente.getId());
+    }
+
+    @Override
+    @Transactional
+    public void desactivarClientePorRfc(String rfc) {
+        if (!CurpRfcUtil.esRfcValido(rfc)) {
+            throw new ReglaNegocioException("Formato de RFC inválido: " + rfc);
+        }
+        String rfcLimpio = CurpRfcUtil.sanitizarRfc(rfc);
+        Cliente cliente = clienteRepository.findByRfc(rfcLimpio)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con RFC: " + rfcLimpio));
+        desactivarCliente(cliente.getId());
+    }
+
+    @Override
+    @Transactional
+    public ClienteResponse reactivarClientePorCurp(String curp) {
+        if (!CurpRfcUtil.esCurpValida(curp)) {
+            throw new ReglaNegocioException("Formato de CURP inválido: " + curp);
+        }
+        String curpLimpia = CurpRfcUtil.sanitizarCurp(curp);
+        Cliente cliente = clienteRepository.findByCurp(curpLimpia)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con CURP: " + curpLimpia));
+
+        if (Boolean.TRUE.equals(cliente.getActivo())) {
+            throw new ReglaNegocioException("El cliente con CURP " + curpLimpia + " ya se encuentra activo");
+        }
+
+        cliente.setActivo(true);
+        if (cliente.getCuenta() != null) {
+            cliente.getCuenta().setEstatus(EstatusCuenta.ACTIVA);
+        }
+
+        Cliente clienteGuardado = clienteRepository.save(cliente);
+        return mapearAClienteResponse(clienteGuardado);
+    }
+
+    @Override
+    @Transactional
+    public ClienteResponse reactivarClientePorRfc(String rfc) {
+        if (!CurpRfcUtil.esRfcValido(rfc)) {
+            throw new ReglaNegocioException("Formato de RFC inválido: " + rfc);
+        }
+        String rfcLimpio = CurpRfcUtil.sanitizarRfc(rfc);
+        Cliente cliente = clienteRepository.findByRfc(rfcLimpio)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con RFC: " + rfcLimpio));
+
+        if (Boolean.TRUE.equals(cliente.getActivo())) {
+            throw new ReglaNegocioException("El cliente con RFC " + rfcLimpio + " ya se encuentra activo");
+        }
+
+        cliente.setActivo(true);
+        if (cliente.getCuenta() != null) {
+            cliente.getCuenta().setEstatus(EstatusCuenta.ACTIVA);
+        }
+
+        Cliente clienteGuardado = clienteRepository.save(cliente);
+        return mapearAClienteResponse(clienteGuardado);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ValidacionIdentificadorResponse validarDisponibilidadCurp(String curp) {
+        if (curp == null || curp.isBlank()) {
+            return ValidacionIdentificadorResponse.builder()
+                    .identificador(curp)
+                    .tipo("CURP")
+                    .formatoValido(false)
+                    .disponible(false)
+                    .mensaje("La CURP no puede estar vacía")
+                    .build();
+        }
+
+        String curpLimpia = CurpRfcUtil.sanitizarCurp(curp);
+        boolean formatoValido = CurpRfcUtil.esCurpValida(curpLimpia);
+        if (!formatoValido) {
+            return ValidacionIdentificadorResponse.builder()
+                    .identificador(curpLimpia)
+                    .tipo("CURP")
+                    .formatoValido(false)
+                    .disponible(false)
+                    .mensaje("Formato de CURP inválido (debe contener 18 caracteres según estándar oficial RENAPO: XXXX000000XXXXXX00)")
+                    .build();
+        }
+
+        boolean existe = clienteRepository.existsByCurp(curpLimpia);
+        return ValidacionIdentificadorResponse.builder()
+                .identificador(curpLimpia)
+                .tipo("CURP")
+                .formatoValido(true)
+                .disponible(!existe)
+                .mensaje(existe ? "La CURP ya está registrada en el sistema" : "La CURP está disponible para registro")
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ValidacionIdentificadorResponse validarDisponibilidadRfc(String rfc) {
+        if (rfc == null || rfc.isBlank()) {
+            return ValidacionIdentificadorResponse.builder()
+                    .identificador(rfc)
+                    .tipo("RFC")
+                    .formatoValido(false)
+                    .disponible(false)
+                    .mensaje("El RFC no puede estar vacío")
+                    .build();
+        }
+
+        String rfcLimpio = CurpRfcUtil.sanitizarRfc(rfc);
+        boolean formatoValido = CurpRfcUtil.esRfcValido(rfcLimpio);
+        if (!formatoValido) {
+            return ValidacionIdentificadorResponse.builder()
+                    .identificador(rfcLimpio)
+                    .tipo("RFC")
+                    .formatoValido(false)
+                    .disponible(false)
+                    .mensaje("Formato de RFC inválido (debe contener 12 o 13 caracteres alfanuméricos según estándar SAT)")
+                    .build();
+        }
+
+        boolean existe = clienteRepository.existsByRfc(rfcLimpio);
+        return ValidacionIdentificadorResponse.builder()
+                .identificador(rfcLimpio)
+                .tipo("RFC")
+                .formatoValido(true)
+                .disponible(!existe)
+                .mensaje(existe ? "El RFC ya está registrado en el sistema" : "El RFC está disponible para registro")
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public ClienteResponse actualizarContactoPorCurp(String curp, ActualizarContactoRequest request) {
+        if (!CurpRfcUtil.esCurpValida(curp)) {
+            throw new ReglaNegocioException("Formato de CURP inválido: " + curp);
+        }
+        String curpLimpia = CurpRfcUtil.sanitizarCurp(curp);
+        Cliente cliente = clienteRepository.findByCurp(curpLimpia)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con CURP: " + curpLimpia));
+
+        if (!cliente.getActivo()) {
+            throw new ReglaNegocioException("No se puede actualizar el contacto de un cliente inactivo");
+        }
+
+        String nuevoCorreo = request.getCorreo().trim().toLowerCase();
+        if (!nuevoCorreo.equalsIgnoreCase(cliente.getCorreo()) && clienteRepository.existsByCorreoAndIdNot(nuevoCorreo, cliente.getId())) {
+            throw new CorreoDuplicadoException(nuevoCorreo);
+        }
+
+        cliente.setCorreo(nuevoCorreo);
+        cliente.setTelefonoMovil(request.getTelefonoMovil().trim());
+        cliente.setTelefonoAlternativo(request.getTelefonoAlternativo() != null && !request.getTelefonoAlternativo().isBlank() ? request.getTelefonoAlternativo().trim() : null);
+
+        Cliente guardado = clienteRepository.save(cliente);
+        return mapearAClienteResponse(guardado);
+    }
+
+    @Override
+    @Transactional
+    public ClienteResponse actualizarContactoPorRfc(String rfc, ActualizarContactoRequest request) {
+        if (!CurpRfcUtil.esRfcValido(rfc)) {
+            throw new ReglaNegocioException("Formato de RFC inválido: " + rfc);
+        }
+        String rfcLimpio = CurpRfcUtil.sanitizarRfc(rfc);
+        Cliente cliente = clienteRepository.findByRfc(rfcLimpio)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con RFC: " + rfcLimpio));
+
+        if (!cliente.getActivo()) {
+            throw new ReglaNegocioException("No se puede actualizar el contacto de un cliente inactivo");
+        }
+
+        String nuevoCorreo = request.getCorreo().trim().toLowerCase();
+        if (!nuevoCorreo.equalsIgnoreCase(cliente.getCorreo()) && clienteRepository.existsByCorreoAndIdNot(nuevoCorreo, cliente.getId())) {
+            throw new CorreoDuplicadoException(nuevoCorreo);
+        }
+
+        cliente.setCorreo(nuevoCorreo);
+        cliente.setTelefonoMovil(request.getTelefonoMovil().trim());
+        cliente.setTelefonoAlternativo(request.getTelefonoAlternativo() != null && !request.getTelefonoAlternativo().isBlank() ? request.getTelefonoAlternativo().trim() : null);
+
+        Cliente guardado = clienteRepository.save(cliente);
+        return mapearAClienteResponse(guardado);
+    }
+
+    @Override
+    @Transactional
+    public CuentaResponse obtenerCuentaPorCurp(String curp) {
+        if (!CurpRfcUtil.esCurpValida(curp)) {
+            throw new ReglaNegocioException("Formato de CURP inválido: " + curp);
+        }
+        String curpLimpia = CurpRfcUtil.sanitizarCurp(curp);
+        Cliente cliente = clienteRepository.findByCurp(curpLimpia)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con CURP: " + curpLimpia));
+
+        if (cliente.getCuenta() == null) {
+            throw new RecursoNoEncontradoException("El cliente con CURP " + curpLimpia + " no tiene una cuenta bancaria asociada");
+        }
+
+        return cuentaService.obtenerCuentaPorNumero(cliente.getCuenta().getNumeroCuenta());
+    }
+
+    @Override
+    @Transactional
+    public CuentaResponse obtenerCuentaPorRfc(String rfc) {
+        if (!CurpRfcUtil.esRfcValido(rfc)) {
+            throw new ReglaNegocioException("Formato de RFC inválido: " + rfc);
+        }
+        String rfcLimpio = CurpRfcUtil.sanitizarRfc(rfc);
+        Cliente cliente = clienteRepository.findByRfc(rfcLimpio)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con RFC: " + rfcLimpio));
+
+        if (cliente.getCuenta() == null) {
+            throw new RecursoNoEncontradoException("El cliente con RFC " + rfcLimpio + " no tiene una cuenta bancaria asociada");
+        }
+
+        return cuentaService.obtenerCuentaPorNumero(cliente.getCuenta().getNumeroCuenta());
+    }
+
+    @Override
+    @Transactional
     public LoginResponse autenticarCliente(LoginRequest request) {
         DatosSeguridadBiometria seguridad = seguridadRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado: " + request.getUsername()));
@@ -305,26 +609,25 @@ public class ClienteServiceImpl implements ClienteService {
                     .loggeado(false)
                     .mensaje("Autenticación fallida. Credenciales o datos biométricos incorrectos.")
                     .username(request.getUsername())
+                    .clienteId(null)
                     .estadoSesion("DENEGADA")
                     .timestamp(LocalDateTime.now())
                     .build();
         }
 
-     
         seguridad.setLoggeado(true);
         seguridad.setUltimaActividad(LocalDateTime.now());
         seguridadRepository.save(seguridad);
 
         String nombreCompleto = cliente != null ? cliente.getNombre() + " " + cliente.getApellidoPaterno() : "Usuario Sistema";
         String numeroCuenta = cliente != null && cliente.getCuenta() != null ? cliente.getCuenta().getNumeroCuenta() : "N/A";
-        Long clienteId = cliente != null ? cliente.getId() : null;
 
         return LoginResponse.builder()
                 .autenticado(true)
                 .loggeado(true)
                 .mensaje("Autenticación exitosa mediante " + metodoAuth)
                 .username(seguridad.getUsername())
-                .clienteId(clienteId)
+                .clienteId(null) // No exponer ID en respuestas de usuario
                 .clienteNombreCompleto(nombreCompleto)
                 .numeroCuenta(numeroCuenta)
                 .tipoBiometriaValidada(seguridad.getTipoBiometria())

@@ -2,12 +2,15 @@ package com.kapm.onboarding_clientes.exception;
 
 import com.kapm.onboarding_clientes.dto.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -103,6 +106,68 @@ public class GlobalExceptionHandler {
                 .build();
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> manejarConstraintViolation(
+            ConstraintViolationException ex, HttpServletRequest request) {
+
+        Map<String, String> errores = new HashMap<>();
+        ex.getConstraintViolations().forEach(violation -> {
+            String property = violation.getPropertyPath().toString();
+            errores.put(property, violation.getMessage());
+        });
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .exito(false)
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Error de Restricción de Validación")
+                .mensaje("Uno o más parámetros no cumplen las restricciones de validación")
+                .erroresValidacion(errores)
+                .ruta(request.getRequestURI())
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ErrorResponse> manejarHandlerMethodValidation(
+            HandlerMethodValidationException ex, HttpServletRequest request) {
+
+        Map<String, String> errores = new HashMap<>();
+        ex.getAllErrors().forEach(err -> {
+            String campo = err.getCodes() != null && err.getCodes().length > 0 ? err.getCodes()[0] : "parametro";
+            errores.put(campo, err.getDefaultMessage());
+        });
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .exito(false)
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Error de Validación en Parámetro de Solicitud")
+                .mensaje("Los parámetros de la URL no cumplen con las reglas requeridas")
+                .erroresValidacion(errores)
+                .ruta(request.getRequestURI())
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> manejarTypeMismatch(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+
+        ErrorResponse error = ErrorResponse.builder()
+                .exito(false)
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Tipo de Parámetro Incorrecto")
+                .mensaje("El valor proporcionado para el parámetro '" + ex.getName() + "' no es válido: " + ex.getValue())
+                .ruta(request.getRequestURI())
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

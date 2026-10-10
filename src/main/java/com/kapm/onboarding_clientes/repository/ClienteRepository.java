@@ -3,7 +3,6 @@ package com.kapm.onboarding_clientes.repository;
 import com.kapm.onboarding_clientes.model.Cliente;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -30,6 +29,12 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     boolean existsByRfc(String rfc);
 
     boolean existsByCorreo(String correo);
+
+    boolean existsByCurpAndIdNot(String curp, Long id);
+
+    boolean existsByRfcAndIdNot(String rfc, Long id);
+
+    boolean existsByCorreoAndIdNot(String correo, Long id);
 
     @Query("SELECT c FROM Cliente c WHERE c.activo = true AND c.cuenta.estatus = 'ACTIVA'")
     List<Cliente> findClientesActivosConCuentaActiva();

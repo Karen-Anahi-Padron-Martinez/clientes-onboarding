@@ -1,6 +1,6 @@
 package com.kapm.onboarding_clientes.repository;
 
-import com.kapm.onboarding_clientes.model.catalogo.CatEstadoRepublica;
+import com.kapm.onboarding_clientes.entity.catalogo.CatEstadoRepublica;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

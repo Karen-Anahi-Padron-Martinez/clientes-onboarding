@@ -1,5 +1,6 @@
 package com.kapm.onboarding_clientes.dto.request;
 
+import com.kapm.onboarding_clientes.validation.ValidationMessages;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -14,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Request para consulta de sesión y logout mediante Request Body (sin PathVariable)")
 public class UsuarioSesionRequest {
 
-    @NotBlank(message = "El nombre de usuario (username) es obligatorio en el Request Body")
+    @NotBlank(message = ValidationMessages.SEGURIDAD_USERNAME_OBLIGATORIO)
     @Schema(description = "Nombre de usuario o username registrado", example = "carlos_mendoza")
     private String username;
 }

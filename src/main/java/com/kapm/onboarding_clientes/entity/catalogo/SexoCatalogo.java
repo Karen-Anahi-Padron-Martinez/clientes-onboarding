@@ -1,4 +1,4 @@
-package com.kapm.onboarding_clientes.model.catalogo;
+package com.kapm.onboarding_clientes.entity.catalogo;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

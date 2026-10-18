@@ -1,16 +1,16 @@
-package com.kapm.onboarding_clientes.model.catalogo;
+package com.kapm.onboarding_clientes.entity.catalogo;
 
 import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "cat_paises")
+@Table(name = "cat_estados_republica")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CatPais {
+public class CatEstadoRepublica {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

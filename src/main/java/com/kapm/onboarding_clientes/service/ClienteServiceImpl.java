@@ -1,38 +1,35 @@
 package com.kapm.onboarding_clientes.service;
 
-import com.kapm.onboarding_clientes.dto.request.ActualizarContactoRequest;
-import com.kapm.onboarding_clientes.dto.request.ClienteRegistrationRequest;
-import com.kapm.onboarding_clientes.dto.request.ClienteUpdateRequest;
-import com.kapm.onboarding_clientes.dto.request.DatosLaboralesDTO;
-import com.kapm.onboarding_clientes.dto.request.DomicilioDTO;
-import com.kapm.onboarding_clientes.dto.request.LoginRequest;
+import com.kapm.onboarding_clientes.dto.request.*;
 import com.kapm.onboarding_clientes.dto.response.ClienteResponse;
 import com.kapm.onboarding_clientes.dto.response.CuentaResponse;
 import com.kapm.onboarding_clientes.dto.response.LoginResponse;
+import com.kapm.onboarding_clientes.dto.response.PageResponse;
 import com.kapm.onboarding_clientes.dto.response.ValidacionIdentificadorResponse;
+import com.kapm.onboarding_clientes.entity.*;
+import com.kapm.onboarding_clientes.entity.catalogo.*;
 import com.kapm.onboarding_clientes.exception.*;
-import com.kapm.onboarding_clientes.model.*;
-import com.kapm.onboarding_clientes.model.catalogo.*;
+import com.kapm.onboarding_clientes.mapper.ClienteMapper;
 import com.kapm.onboarding_clientes.repository.ClienteRepository;
 import com.kapm.onboarding_clientes.repository.DatosSeguridadBiometriaRepository;
+import com.kapm.onboarding_clientes.repository.specification.ClienteSpecification;
 import com.kapm.onboarding_clientes.validation.CurpRfcUtil;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.Period;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class ClienteServiceImpl implements ClienteService {
 
     private final ClienteRepository clienteRepository;
@@ -40,35 +37,53 @@ public class ClienteServiceImpl implements ClienteService {
     private final SeguridadBiometriaService seguridadBiometriaService;
     private final DatosSeguridadBiometriaRepository seguridadRepository;
     private final CatalogoService catalogoService;
+    private final ClienteMapper clienteMapper;
+    private final long inactividadLimiteSegundos;
+
+    public ClienteServiceImpl(
+            ClienteRepository clienteRepository,
+            CuentaService cuentaService,
+            SeguridadBiometriaService seguridadBiometriaService,
+            DatosSeguridadBiometriaRepository seguridadRepository,
+            CatalogoService catalogoService,
+            ClienteMapper clienteMapper,
+            @Value("${app.seguridad.inactividad-segundos:5}") long inactividadLimiteSegundos) {
+        this.clienteRepository = clienteRepository;
+        this.cuentaService = cuentaService;
+        this.seguridadBiometriaService = seguridadBiometriaService;
+        this.seguridadRepository = seguridadRepository;
+        this.catalogoService = catalogoService;
+        this.clienteMapper = clienteMapper;
+        this.inactividadLimiteSegundos = inactividadLimiteSegundos > 0 ? inactividadLimiteSegundos : SeguridadBiometriaServiceImpl.INACTIVITY_TIMEOUT_SECONDS;
+    }
 
     @Override
     @Transactional
     public ClienteResponse registrarCliente(ClienteRegistrationRequest request) {
-        
+
         validarMayoriaDeEdad(request.getFechaNacimiento());
 
         String curp = CurpRfcUtil.sanitizarCurp(request.getCurp());
         if (!CurpRfcUtil.esCurpValida(curp)) {
-            throw new ReglaNegocioException("El formato de la CURP es inválido (debe cumplir los 18 caracteres oficiales): " + request.getCurp());
+            throw new ReglaNegocioException(ErrorMessage.CURP_FORMATO_INVALIDO, request.getCurp());
         }
         if (clienteRepository.existsByCurp(curp)) {
-            throw new CurpDuplicadaException(curp);
+            throw new CurpDuplicadaException(ErrorMessage.CURP_DUPLICADA, curp);
         }
 
         String rfc = CurpRfcUtil.sanitizarRfc(request.getRfc());
         if (!CurpRfcUtil.esRfcValido(rfc)) {
-            throw new ReglaNegocioException("El formato del RFC es inválido (debe contener 12 o 13 caracteres): " + request.getRfc());
+            throw new ReglaNegocioException(ErrorMessage.RFC_FORMATO_INVALIDO, request.getRfc());
         }
         if (clienteRepository.existsByRfc(rfc)) {
-            throw new RfcDuplicadoException(rfc);
+            throw new RfcDuplicadoException(ErrorMessage.RFC_DUPLICADO, rfc);
         }
 
         String correo = request.getCorreo().trim().toLowerCase();
         if (clienteRepository.existsByCorreo(correo)) {
-            throw new CorreoDuplicadoException(correo);
+            throw new CorreoDuplicadoException(ErrorMessage.CORREO_DUPLICADO, correo);
         }
 
-        // Búsqueda y asociación de entidades de catálogo (Foreign Keys)
         CatSexo sexoCat = catalogoService.buscarSexo(request.getSexo());
         CatEstadoCivil estadoCivilCat = catalogoService.buscarEstadoCivil(request.getEstadoCivil());
         CatNacionalidad nacionalidadCat = catalogoService.buscarNacionalidad(request.getNacionalidad());
@@ -76,7 +91,6 @@ public class ClienteServiceImpl implements ClienteService {
         CatEstadoRepublica estadoDomicilioCat = catalogoService.buscarEstadoRepublica(request.getDomicilio().getEstado());
         CatPais paisDomicilioCat = catalogoService.buscarPais(request.getDomicilio().getPais());
 
-        // 3. Crear Domicilio
         Domicilio domicilio = Domicilio.builder()
                 .calle(request.getDomicilio().getCalle().trim())
                 .numeroExterior(request.getDomicilio().getNumeroExterior().trim())
@@ -88,13 +102,9 @@ public class ClienteServiceImpl implements ClienteService {
                 .pais(paisDomicilioCat)
                 .build();
 
-        // 4. Crear Cuenta Bancaria Asociada Automáticamente y Registro de Saldo
         Cuenta cuenta = cuentaService.crearCuentaInicial(request.getSaldoInicial());
-
-        // 5. Crear Datos de Seguridad y Biometría
         DatosSeguridadBiometria seguridad = crearOPrepararSeguridad(request, curp);
 
-        // 6. Construir Entidad Cliente
         Cliente cliente = Cliente.builder()
                 .nombre(request.getNombre().trim())
                 .segundoNombre(request.getSegundoNombre() != null ? request.getSegundoNombre().trim() : null)
@@ -119,10 +129,8 @@ public class ClienteServiceImpl implements ClienteService {
                 .build();
 
         Cliente clienteGuardado = clienteRepository.save(cliente);
+        ClienteResponse response = clienteMapper.mapearAClienteResponse(clienteGuardado);
 
-        ClienteResponse response = mapearAClienteResponse(clienteGuardado);
-        
-        // REQUERIMIENTO: El response del POST de usuarios/clientes no debe mandar el id
         response.setId(null);
         if (response.getCuenta() != null) {
             response.getCuenta().setId(null);
@@ -135,7 +143,7 @@ public class ClienteServiceImpl implements ClienteService {
     @Transactional(readOnly = true)
     public List<ClienteResponse> obtenerTodosLosClientes() {
         return clienteRepository.findAll().stream()
-                .map(this::mapearAClienteResponse)
+                .map(clienteMapper::mapearAClienteResponse)
                 .collect(Collectors.toList());
     }
 
@@ -143,93 +151,118 @@ public class ClienteServiceImpl implements ClienteService {
     @Transactional(readOnly = true)
     public List<ClienteResponse> obtenerClientesActivos() {
         return clienteRepository.findByActivoTrue().stream()
-                .map(this::mapearAClienteResponse)
+                .map(clienteMapper::mapearAClienteResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
-    @Transactional
-    public ClienteResponse obtenerClientePorId(Long id) {
-        Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new ClienteNoEncontradoException(id));
-        return mapearAClienteResponse(cliente);
+    @Transactional(readOnly = true)
+    public PageResponse<ClienteResponse> buscarClientes(BuscarClienteRequest request) {
+        Specification<Cliente> spec = ClienteSpecification.conFiltros(request);
+        Pageable pageable = PageRequest.of(request.getPaginaSegura(), request.getTamanioSeguro());
+        Page<Cliente> page = clienteRepository.findAll(spec, pageable);
+
+        if (page.isEmpty()) {
+            throw new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO_BUSQUEDA);
+        }
+
+        Page<ClienteResponse> dtoPage = page.map(clienteMapper::mapearAClienteResponse);
+        return PageResponse.from(dtoPage);
     }
 
     @Override
     @Transactional
     public ClienteResponse obtenerClientePorCurp(String curp) {
         if (!CurpRfcUtil.esCurpValida(curp)) {
-            throw new ReglaNegocioException("La CURP proporcionada no tiene un formato válido (18 caracteres): " + curp);
+            throw new ReglaNegocioException(ErrorMessage.CURP_FORMATO_INVALIDO, curp);
         }
         String curpLimpia = CurpRfcUtil.sanitizarCurp(curp);
         Cliente cliente = clienteRepository.findByCurp(curpLimpia)
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con CURP: " + curpLimpia));
-        return mapearAClienteResponse(cliente);
+                .orElseThrow(() -> new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO, curpLimpia));
+        return clienteMapper.mapearAClienteResponse(cliente);
     }
 
     @Override
     @Transactional
     public ClienteResponse obtenerClientePorRfc(String rfc) {
         if (!CurpRfcUtil.esRfcValido(rfc)) {
-            throw new ReglaNegocioException("El RFC proporcionado no tiene un formato válido (12 o 13 caracteres): " + rfc);
+            throw new ReglaNegocioException(ErrorMessage.RFC_FORMATO_INVALIDO, rfc);
         }
         String rfcLimpio = CurpRfcUtil.sanitizarRfc(rfc);
         Cliente cliente = clienteRepository.findByRfc(rfcLimpio)
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con RFC: " + rfcLimpio));
-        return mapearAClienteResponse(cliente);
+                .orElseThrow(() -> new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO, rfcLimpio));
+        return clienteMapper.mapearAClienteResponse(cliente);
     }
 
     @Override
     @Transactional
     public ClienteResponse obtenerClientePorCorreo(String correo) {
         Cliente cliente = clienteRepository.findByCorreo(correo.trim().toLowerCase())
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con correo: " + correo));
-        return mapearAClienteResponse(cliente);
+                .orElseThrow(() -> new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO, correo));
+        return clienteMapper.mapearAClienteResponse(cliente);
     }
 
     @Override
     @Transactional
     public ClienteResponse obtenerClientePorNumeroCuenta(String numeroCuenta) {
         Cliente cliente = clienteRepository.findByCuentaNumeroCuenta(numeroCuenta)
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente asociado al número de cuenta: " + numeroCuenta));
-        return mapearAClienteResponse(cliente);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<ClienteResponse> obtenerClientesPorRangoFechas(LocalDate fechaInicio, LocalDate fechaFin) {
-        if (fechaInicio == null || fechaFin == null) {
-            throw new ReglaNegocioException("Las fechas de inicio y fin son obligatorias para la consulta por rango");
-        }
-        if (fechaInicio.isAfter(fechaFin)) {
-            throw new ReglaNegocioException("La fecha de inicio no puede ser posterior a la fecha de fin");
-        }
-
-        LocalDateTime inicio = fechaInicio.atStartOfDay();
-        LocalDateTime fin = fechaFin.atTime(LocalTime.MAX);
-
-        return clienteRepository.findByFechaRegistroBetween(inicio, fin).stream()
-                .map(this::mapearAClienteResponse)
-                .collect(Collectors.toList());
+                .orElseThrow(() -> new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO, numeroCuenta));
+        return clienteMapper.mapearAClienteResponse(cliente);
     }
 
     @Override
     @Transactional
-    public ClienteResponse actualizarCliente(Long id, ClienteUpdateRequest request) {
-        Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new ClienteNoEncontradoException(id));
-        return ejecutarActualizacion(cliente, request);
+    public ClienteResponse actualizarClientePorCurp(ActualizarPorCurpRequest request) {
+        ClienteUpdateRequest updateReq = ClienteUpdateRequest.builder()
+                .curp(request.getCurp())
+                .sexo(request.getSexo())
+                .estadoCivil(request.getEstadoCivil())
+                .correo(request.getCorreo())
+                .telefonoMovil(request.getTelefonoMovil())
+                .telefonoAlternativo(request.getTelefonoAlternativo())
+                .domicilio(request.getDomicilio())
+                .laboral(request.getLaboral())
+                .build();
+        return actualizarClientePorCurp(request.getCurp(), updateReq);
+    }
+
+    @Override
+    @Transactional
+    public ClienteResponse actualizarClientePorRfc(ActualizarPorRfcRequest request) {
+        ClienteUpdateRequest updateReq = ClienteUpdateRequest.builder()
+                .rfc(request.getRfc())
+                .sexo(request.getSexo())
+                .estadoCivil(request.getEstadoCivil())
+                .correo(request.getCorreo())
+                .telefonoMovil(request.getTelefonoMovil())
+                .telefonoAlternativo(request.getTelefonoAlternativo())
+                .domicilio(request.getDomicilio())
+                .laboral(request.getLaboral())
+                .build();
+        return actualizarClientePorRfc(request.getRfc(), updateReq);
+    }
+
+    @Override
+    @Transactional
+    public ClienteResponse actualizarCliente(ClienteUpdateRequest request) {
+        if (request.getCurp() != null && !request.getCurp().isBlank()) {
+            return actualizarClientePorCurp(request.getCurp(), request);
+        } else if (request.getRfc() != null && !request.getRfc().isBlank()) {
+            return actualizarClientePorRfc(request.getRfc(), request);
+        } else {
+            throw new ReglaNegocioException(ErrorMessage.IDENTIFICADOR_REQUERIDO);
+        }
     }
 
     @Override
     @Transactional
     public ClienteResponse actualizarClientePorCurp(String curp, ClienteUpdateRequest request) {
         if (!CurpRfcUtil.esCurpValida(curp)) {
-            throw new ReglaNegocioException("La CURP proporcionada para actualización no tiene un formato válido (18 caracteres): " + curp);
+            throw new ReglaNegocioException(ErrorMessage.CURP_FORMATO_INVALIDO, curp);
         }
         String curpLimpia = CurpRfcUtil.sanitizarCurp(curp);
         Cliente cliente = clienteRepository.findByCurp(curpLimpia)
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con CURP: " + curpLimpia));
+                .orElseThrow(() -> new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO, curpLimpia));
         return ejecutarActualizacion(cliente, request);
     }
 
@@ -237,98 +270,77 @@ public class ClienteServiceImpl implements ClienteService {
     @Transactional
     public ClienteResponse actualizarClientePorRfc(String rfc, ClienteUpdateRequest request) {
         if (!CurpRfcUtil.esRfcValido(rfc)) {
-            throw new ReglaNegocioException("El RFC proporcionado para actualización no tiene un formato válido (12 o 13 caracteres): " + rfc);
+            throw new ReglaNegocioException(ErrorMessage.RFC_FORMATO_INVALIDO, rfc);
         }
         String rfcLimpio = CurpRfcUtil.sanitizarRfc(rfc);
         Cliente cliente = clienteRepository.findByRfc(rfcLimpio)
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con RFC: " + rfcLimpio));
+                .orElseThrow(() -> new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO, rfcLimpio));
         return ejecutarActualizacion(cliente, request);
     }
 
     private ClienteResponse ejecutarActualizacion(Cliente cliente, ClienteUpdateRequest request) {
         if (!Boolean.TRUE.equals(cliente.getActivo())) {
-            throw new ReglaNegocioException("No se puede actualizar la información de un cliente dado de baja (inactivo)");
+            throw new ReglaNegocioException(ErrorMessage.CLIENTE_INACTIVO);
         }
 
-        validarMayoriaDeEdad(request.getFechaNacimiento());
-
-        // Validación de correo único
+        // Validación de unicidad de correo excluyendo al cliente actual
         String nuevoCorreo = request.getCorreo().trim().toLowerCase();
         if (!nuevoCorreo.equalsIgnoreCase(cliente.getCorreo()) && clienteRepository.existsByCorreoAndIdNot(nuevoCorreo, cliente.getId())) {
-            throw new CorreoDuplicadoException(nuevoCorreo);
+            throw new CorreoDuplicadoException(ErrorMessage.CORREO_DUPLICADO, nuevoCorreo);
         }
-
-        // Validación y actualización opcional de CURP
-        if (request.getCurp() != null && !request.getCurp().isBlank()) {
-            String nuevoCurp = CurpRfcUtil.sanitizarCurp(request.getCurp());
-            if (!CurpRfcUtil.esCurpValida(nuevoCurp)) {
-                throw new ReglaNegocioException("El nuevo CURP proporcionado tiene un formato inválido (18 caracteres oficiales): " + request.getCurp());
-            }
-            if (!nuevoCurp.equalsIgnoreCase(cliente.getCurp()) && clienteRepository.existsByCurpAndIdNot(nuevoCurp, cliente.getId())) {
-                throw new CurpDuplicadaException(nuevoCurp);
-            }
-            cliente.setCurp(nuevoCurp);
-        }
-
-        // Validación y actualización opcional de RFC
-        if (request.getRfc() != null && !request.getRfc().isBlank()) {
-            String nuevoRfc = CurpRfcUtil.sanitizarRfc(request.getRfc());
-            if (!CurpRfcUtil.esRfcValido(nuevoRfc)) {
-                throw new ReglaNegocioException("El nuevo RFC proporcionado tiene un formato inválido (12 o 13 caracteres): " + request.getRfc());
-            }
-            if (!nuevoRfc.equalsIgnoreCase(cliente.getRfc()) && clienteRepository.existsByRfcAndIdNot(nuevoRfc, cliente.getId())) {
-                throw new RfcDuplicadoException(nuevoRfc);
-            }
-            cliente.setRfc(nuevoRfc);
-        }
-
-        // Búsqueda y asociación de entidades de catálogo (Foreign Keys)
-        CatSexo sexoCat = catalogoService.buscarSexo(request.getSexo());
-        CatEstadoCivil estadoCivilCat = catalogoService.buscarEstadoCivil(request.getEstadoCivil());
-        CatNacionalidad nacionalidadCat = catalogoService.buscarNacionalidad(request.getNacionalidad());
-        CatOcupacion ocupacionCat = catalogoService.buscarOcupacion(request.getLaboral().getOcupacion());
-        CatEstadoRepublica estadoDomicilioCat = catalogoService.buscarEstadoRepublica(request.getDomicilio().getEstado());
-        CatPais paisDomicilioCat = catalogoService.buscarPais(request.getDomicilio().getPais());
-
-        cliente.setNombre(request.getNombre().trim());
-        cliente.setSegundoNombre(request.getSegundoNombre() != null ? request.getSegundoNombre().trim() : null);
-        cliente.setApellidoPaterno(request.getApellidoPaterno().trim());
-        cliente.setApellidoMaterno(request.getApellidoMaterno().trim());
-        cliente.setFechaNacimiento(request.getFechaNacimiento());
-        cliente.setSexo(sexoCat);
-        cliente.setNacionalidad(nacionalidadCat);
-        cliente.setEstadoCivil(estadoCivilCat);
-
         cliente.setCorreo(nuevoCorreo);
+
+        // Actualización de campos modificables únicamente (sexo, estado civil, teléfono, domicilio, laboral)
+        if (request.getSexo() != null && !request.getSexo().isBlank()) {
+            CatSexo sexoCat = catalogoService.buscarSexo(request.getSexo());
+            cliente.setSexo(sexoCat);
+        }
+
+        if (request.getEstadoCivil() != null && !request.getEstadoCivil().isBlank()) {
+            CatEstadoCivil estadoCivilCat = catalogoService.buscarEstadoCivil(request.getEstadoCivil());
+            cliente.setEstadoCivil(estadoCivilCat);
+        }
+
         cliente.setTelefonoMovil(request.getTelefonoMovil().trim());
-        cliente.setTelefonoAlternativo(request.getTelefonoAlternativo() != null && !request.getTelefonoAlternativo().isBlank() ? request.getTelefonoAlternativo().trim() : null);
+        cliente.setTelefonoAlternativo(request.getTelefonoAlternativo() != null && !request.getTelefonoAlternativo().isBlank() 
+                ? request.getTelefonoAlternativo().trim() 
+                : null);
 
-        Domicilio dom = cliente.getDomicilio();
-        dom.setCalle(request.getDomicilio().getCalle().trim());
-        dom.setNumeroExterior(request.getDomicilio().getNumeroExterior().trim());
-        dom.setNumeroInterior(request.getDomicilio().getNumeroInterior() != null ? request.getDomicilio().getNumeroInterior().trim() : null);
-        dom.setColonia(request.getDomicilio().getColonia().trim());
-        dom.setMunicipio(request.getDomicilio().getMunicipio().trim());
-        dom.setEstado(estadoDomicilioCat);
-        dom.setCodigoPostal(request.getDomicilio().getCodigoPostal().trim());
-        dom.setPais(paisDomicilioCat);
+        if (request.getDomicilio() != null) {
+            Domicilio dom = cliente.getDomicilio();
+            if (dom == null) {
+                dom = new Domicilio();
+                cliente.setDomicilio(dom);
+            }
+            CatEstadoRepublica estadoDomicilioCat = catalogoService.buscarEstadoRepublica(request.getDomicilio().getEstado());
+            CatPais paisDomicilioCat = catalogoService.buscarPais(request.getDomicilio().getPais());
 
-        cliente.setOcupacion(ocupacionCat);
-        cliente.setEmpresa(request.getLaboral().getEmpresa().trim());
-        cliente.setIngresoMensual(request.getLaboral().getIngresoMensual());
+            dom.setCalle(request.getDomicilio().getCalle().trim());
+            dom.setNumeroExterior(request.getDomicilio().getNumeroExterior().trim());
+            dom.setNumeroInterior(request.getDomicilio().getNumeroInterior() != null ? request.getDomicilio().getNumeroInterior().trim() : null);
+            dom.setColonia(request.getDomicilio().getColonia().trim());
+            dom.setMunicipio(request.getDomicilio().getMunicipio().trim());
+            dom.setEstado(estadoDomicilioCat);
+            dom.setCodigoPostal(request.getDomicilio().getCodigoPostal().trim());
+            dom.setPais(paisDomicilioCat);
+        }
 
+        if (request.getLaboral() != null) {
+            CatOcupacion ocupacionCat = catalogoService.buscarOcupacion(request.getLaboral().getOcupacion());
+            cliente.setOcupacion(ocupacionCat);
+            cliente.setEmpresa(request.getLaboral().getEmpresa().trim());
+            cliente.setIngresoMensual(request.getLaboral().getIngresoMensual());
+        }
+
+        // Ningún campo de identidad (nombre, segundoNombre, apellidos, fechaNacimiento, curp, rfc, nacionalidad)
+        // es modificado bajo ninguna circunstancia.
         Cliente clienteActualizado = clienteRepository.save(cliente);
-        return mapearAClienteResponse(clienteActualizado);
+        return clienteMapper.mapearAClienteResponse(clienteActualizado);
     }
 
-    @Override
-    @Transactional
-    public void desactivarCliente(Long id) {
-        Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new ClienteNoEncontradoException(id));
-
+    private void desactivarEntidadCliente(Cliente cliente) {
         if (!cliente.getActivo()) {
-            throw new ReglaNegocioException("El cliente ya se encuentra inactivo");
+            throw new ReglaNegocioException(ErrorMessage.CLIENTE_YA_INACTIVO);
         }
 
         cliente.setActivo(false);
@@ -346,40 +358,64 @@ public class ClienteServiceImpl implements ClienteService {
 
     @Override
     @Transactional
+    public void desactivarCliente(ClienteIdentificadorRequest request) {
+        if (request.getCurp() != null && !request.getCurp().isBlank()) {
+            desactivarClientePorCurp(request.getCurp());
+        } else if (request.getRfc() != null && !request.getRfc().isBlank()) {
+            desactivarClientePorRfc(request.getRfc());
+        } else {
+            throw new ReglaNegocioException(ErrorMessage.IDENTIFICADOR_REQUERIDO);
+        }
+    }
+
+    @Override
+    @Transactional
     public void desactivarClientePorCurp(String curp) {
         if (!CurpRfcUtil.esCurpValida(curp)) {
-            throw new ReglaNegocioException("Formato de CURP inválido: " + curp);
+            throw new ReglaNegocioException(ErrorMessage.CURP_FORMATO_INVALIDO, curp);
         }
         String curpLimpia = CurpRfcUtil.sanitizarCurp(curp);
         Cliente cliente = clienteRepository.findByCurp(curpLimpia)
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con CURP: " + curpLimpia));
-        desactivarCliente(cliente.getId());
+                .orElseThrow(() -> new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO, curpLimpia));
+        desactivarEntidadCliente(cliente);
     }
 
     @Override
     @Transactional
     public void desactivarClientePorRfc(String rfc) {
         if (!CurpRfcUtil.esRfcValido(rfc)) {
-            throw new ReglaNegocioException("Formato de RFC inválido: " + rfc);
+            throw new ReglaNegocioException(ErrorMessage.RFC_FORMATO_INVALIDO, rfc);
         }
         String rfcLimpio = CurpRfcUtil.sanitizarRfc(rfc);
         Cliente cliente = clienteRepository.findByRfc(rfcLimpio)
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con RFC: " + rfcLimpio));
-        desactivarCliente(cliente.getId());
+                .orElseThrow(() -> new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO, rfcLimpio));
+        desactivarEntidadCliente(cliente);
+    }
+
+    @Override
+    @Transactional
+    public ClienteResponse reactivarCliente(ClienteIdentificadorRequest request) {
+        if (request.getCurp() != null && !request.getCurp().isBlank()) {
+            return reactivarClientePorCurp(request.getCurp());
+        } else if (request.getRfc() != null && !request.getRfc().isBlank()) {
+            return reactivarClientePorRfc(request.getRfc());
+        } else {
+            throw new ReglaNegocioException(ErrorMessage.IDENTIFICADOR_REQUERIDO);
+        }
     }
 
     @Override
     @Transactional
     public ClienteResponse reactivarClientePorCurp(String curp) {
         if (!CurpRfcUtil.esCurpValida(curp)) {
-            throw new ReglaNegocioException("Formato de CURP inválido: " + curp);
+            throw new ReglaNegocioException(ErrorMessage.CURP_FORMATO_INVALIDO, curp);
         }
         String curpLimpia = CurpRfcUtil.sanitizarCurp(curp);
         Cliente cliente = clienteRepository.findByCurp(curpLimpia)
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con CURP: " + curpLimpia));
+                .orElseThrow(() -> new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO, curpLimpia));
 
         if (Boolean.TRUE.equals(cliente.getActivo())) {
-            throw new ReglaNegocioException("El cliente con CURP " + curpLimpia + " ya se encuentra activo");
+            throw new ReglaNegocioException(ErrorMessage.CLIENTE_YA_ACTIVO, curpLimpia);
         }
 
         cliente.setActivo(true);
@@ -388,21 +424,21 @@ public class ClienteServiceImpl implements ClienteService {
         }
 
         Cliente clienteGuardado = clienteRepository.save(cliente);
-        return mapearAClienteResponse(clienteGuardado);
+        return clienteMapper.mapearAClienteResponse(clienteGuardado);
     }
 
     @Override
     @Transactional
     public ClienteResponse reactivarClientePorRfc(String rfc) {
         if (!CurpRfcUtil.esRfcValido(rfc)) {
-            throw new ReglaNegocioException("Formato de RFC inválido: " + rfc);
+            throw new ReglaNegocioException(ErrorMessage.RFC_FORMATO_INVALIDO, rfc);
         }
         String rfcLimpio = CurpRfcUtil.sanitizarRfc(rfc);
         Cliente cliente = clienteRepository.findByRfc(rfcLimpio)
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con RFC: " + rfcLimpio));
+                .orElseThrow(() -> new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO, rfcLimpio));
 
         if (Boolean.TRUE.equals(cliente.getActivo())) {
-            throw new ReglaNegocioException("El cliente con RFC " + rfcLimpio + " ya se encuentra activo");
+            throw new ReglaNegocioException(ErrorMessage.CLIENTE_YA_ACTIVO, rfcLimpio);
         }
 
         cliente.setActivo(true);
@@ -411,7 +447,19 @@ public class ClienteServiceImpl implements ClienteService {
         }
 
         Cliente clienteGuardado = clienteRepository.save(cliente);
-        return mapearAClienteResponse(clienteGuardado);
+        return clienteMapper.mapearAClienteResponse(clienteGuardado);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ValidacionIdentificadorResponse validarDisponibilidad(ValidarIdentificadorRequest request) {
+        if (request.getCurp() != null && !request.getCurp().isBlank()) {
+            return validarDisponibilidadCurp(request.getCurp());
+        } else if (request.getRfc() != null && !request.getRfc().isBlank()) {
+            return validarDisponibilidadRfc(request.getRfc());
+        } else {
+            throw new ReglaNegocioException(ErrorMessage.IDENTIFICADOR_REQUERIDO);
+        }
     }
 
     @Override
@@ -423,7 +471,7 @@ public class ClienteServiceImpl implements ClienteService {
                     .tipo("CURP")
                     .formatoValido(false)
                     .disponible(false)
-                    .mensaje("La CURP no puede estar vacía")
+                    .mensaje(ErrorMessage.CURP_FORMATO_INVALIDO.getMensaje())
                     .build();
         }
 
@@ -435,7 +483,7 @@ public class ClienteServiceImpl implements ClienteService {
                     .tipo("CURP")
                     .formatoValido(false)
                     .disponible(false)
-                    .mensaje("Formato de CURP inválido (debe contener 18 caracteres según estándar oficial RENAPO: XXXX000000XXXXXX00)")
+                    .mensaje(ErrorMessage.CURP_FORMATO_INVALIDO.getMensaje())
                     .build();
         }
 
@@ -445,7 +493,7 @@ public class ClienteServiceImpl implements ClienteService {
                 .tipo("CURP")
                 .formatoValido(true)
                 .disponible(!existe)
-                .mensaje(existe ? "La CURP ya está registrada en el sistema" : "La CURP está disponible para registro")
+                .mensaje(existe ? ErrorMessage.CURP_DUPLICADA.getMensaje() : "La CURP está disponible para registro")
                 .build();
     }
 
@@ -458,7 +506,7 @@ public class ClienteServiceImpl implements ClienteService {
                     .tipo("RFC")
                     .formatoValido(false)
                     .disponible(false)
-                    .mensaje("El RFC no puede estar vacío")
+                    .mensaje(ErrorMessage.RFC_FORMATO_INVALIDO.getMensaje())
                     .build();
         }
 
@@ -470,7 +518,7 @@ public class ClienteServiceImpl implements ClienteService {
                     .tipo("RFC")
                     .formatoValido(false)
                     .disponible(false)
-                    .mensaje("Formato de RFC inválido (debe contener 12 o 13 caracteres alfanuméricos según estándar SAT)")
+                    .mensaje(ErrorMessage.RFC_FORMATO_INVALIDO.getMensaje())
                     .build();
         }
 
@@ -480,27 +528,39 @@ public class ClienteServiceImpl implements ClienteService {
                 .tipo("RFC")
                 .formatoValido(true)
                 .disponible(!existe)
-                .mensaje(existe ? "El RFC ya está registrado en el sistema" : "El RFC está disponible para registro")
+                .mensaje(existe ? ErrorMessage.RFC_DUPLICADO.getMensaje() : "El RFC está disponible para registro")
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public ClienteResponse actualizarContacto(ActualizarContactoRequest request) {
+        if (request.getCurp() != null && !request.getCurp().isBlank()) {
+            return actualizarContactoPorCurp(request.getCurp(), request);
+        } else if (request.getRfc() != null && !request.getRfc().isBlank()) {
+            return actualizarContactoPorRfc(request.getRfc(), request);
+        } else {
+            throw new ReglaNegocioException(ErrorMessage.IDENTIFICADOR_REQUERIDO);
+        }
     }
 
     @Override
     @Transactional
     public ClienteResponse actualizarContactoPorCurp(String curp, ActualizarContactoRequest request) {
         if (!CurpRfcUtil.esCurpValida(curp)) {
-            throw new ReglaNegocioException("Formato de CURP inválido: " + curp);
+            throw new ReglaNegocioException(ErrorMessage.CURP_FORMATO_INVALIDO, curp);
         }
         String curpLimpia = CurpRfcUtil.sanitizarCurp(curp);
         Cliente cliente = clienteRepository.findByCurp(curpLimpia)
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con CURP: " + curpLimpia));
+                .orElseThrow(() -> new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO, curpLimpia));
 
         if (!cliente.getActivo()) {
-            throw new ReglaNegocioException("No se puede actualizar el contacto de un cliente inactivo");
+            throw new ReglaNegocioException(ErrorMessage.CLIENTE_INACTIVO);
         }
 
         String nuevoCorreo = request.getCorreo().trim().toLowerCase();
         if (!nuevoCorreo.equalsIgnoreCase(cliente.getCorreo()) && clienteRepository.existsByCorreoAndIdNot(nuevoCorreo, cliente.getId())) {
-            throw new CorreoDuplicadoException(nuevoCorreo);
+            throw new CorreoDuplicadoException(ErrorMessage.CORREO_DUPLICADO, nuevoCorreo);
         }
 
         cliente.setCorreo(nuevoCorreo);
@@ -508,26 +568,26 @@ public class ClienteServiceImpl implements ClienteService {
         cliente.setTelefonoAlternativo(request.getTelefonoAlternativo() != null && !request.getTelefonoAlternativo().isBlank() ? request.getTelefonoAlternativo().trim() : null);
 
         Cliente guardado = clienteRepository.save(cliente);
-        return mapearAClienteResponse(guardado);
+        return clienteMapper.mapearAClienteResponse(guardado);
     }
 
     @Override
     @Transactional
     public ClienteResponse actualizarContactoPorRfc(String rfc, ActualizarContactoRequest request) {
         if (!CurpRfcUtil.esRfcValido(rfc)) {
-            throw new ReglaNegocioException("Formato de RFC inválido: " + rfc);
+            throw new ReglaNegocioException(ErrorMessage.RFC_FORMATO_INVALIDO, rfc);
         }
         String rfcLimpio = CurpRfcUtil.sanitizarRfc(rfc);
         Cliente cliente = clienteRepository.findByRfc(rfcLimpio)
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con RFC: " + rfcLimpio));
+                .orElseThrow(() -> new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO, rfcLimpio));
 
         if (!cliente.getActivo()) {
-            throw new ReglaNegocioException("No se puede actualizar el contacto de un cliente inactivo");
+            throw new ReglaNegocioException(ErrorMessage.CLIENTE_INACTIVO);
         }
 
         String nuevoCorreo = request.getCorreo().trim().toLowerCase();
         if (!nuevoCorreo.equalsIgnoreCase(cliente.getCorreo()) && clienteRepository.existsByCorreoAndIdNot(nuevoCorreo, cliente.getId())) {
-            throw new CorreoDuplicadoException(nuevoCorreo);
+            throw new CorreoDuplicadoException(ErrorMessage.CORREO_DUPLICADO, nuevoCorreo);
         }
 
         cliente.setCorreo(nuevoCorreo);
@@ -535,21 +595,33 @@ public class ClienteServiceImpl implements ClienteService {
         cliente.setTelefonoAlternativo(request.getTelefonoAlternativo() != null && !request.getTelefonoAlternativo().isBlank() ? request.getTelefonoAlternativo().trim() : null);
 
         Cliente guardado = clienteRepository.save(cliente);
-        return mapearAClienteResponse(guardado);
+        return clienteMapper.mapearAClienteResponse(guardado);
+    }
+
+    @Override
+    @Transactional
+    public CuentaResponse obtenerCuenta(ClienteIdentificadorRequest request) {
+        if (request.getCurp() != null && !request.getCurp().isBlank()) {
+            return obtenerCuentaPorCurp(request.getCurp());
+        } else if (request.getRfc() != null && !request.getRfc().isBlank()) {
+            return obtenerCuentaPorRfc(request.getRfc());
+        } else {
+            throw new ReglaNegocioException(ErrorMessage.IDENTIFICADOR_REQUERIDO);
+        }
     }
 
     @Override
     @Transactional
     public CuentaResponse obtenerCuentaPorCurp(String curp) {
         if (!CurpRfcUtil.esCurpValida(curp)) {
-            throw new ReglaNegocioException("Formato de CURP inválido: " + curp);
+            throw new ReglaNegocioException(ErrorMessage.CURP_FORMATO_INVALIDO, curp);
         }
         String curpLimpia = CurpRfcUtil.sanitizarCurp(curp);
         Cliente cliente = clienteRepository.findByCurp(curpLimpia)
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con CURP: " + curpLimpia));
+                .orElseThrow(() -> new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO, curpLimpia));
 
         if (cliente.getCuenta() == null) {
-            throw new RecursoNoEncontradoException("El cliente con CURP " + curpLimpia + " no tiene una cuenta bancaria asociada");
+            throw new RecursoNoEncontradoException(ErrorMessage.CLIENTE_SIN_CUENTA);
         }
 
         return cuentaService.obtenerCuentaPorNumero(cliente.getCuenta().getNumeroCuenta());
@@ -559,14 +631,14 @@ public class ClienteServiceImpl implements ClienteService {
     @Transactional
     public CuentaResponse obtenerCuentaPorRfc(String rfc) {
         if (!CurpRfcUtil.esRfcValido(rfc)) {
-            throw new ReglaNegocioException("Formato de RFC inválido: " + rfc);
+            throw new ReglaNegocioException(ErrorMessage.RFC_FORMATO_INVALIDO, rfc);
         }
         String rfcLimpio = CurpRfcUtil.sanitizarRfc(rfc);
         Cliente cliente = clienteRepository.findByRfc(rfcLimpio)
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró cliente con RFC: " + rfcLimpio));
+                .orElseThrow(() -> new ClienteNoEncontradoException(ErrorMessage.CLIENTE_NO_ENCONTRADO, rfcLimpio));
 
         if (cliente.getCuenta() == null) {
-            throw new RecursoNoEncontradoException("El cliente con RFC " + rfcLimpio + " no tiene una cuenta bancaria asociada");
+            throw new RecursoNoEncontradoException(ErrorMessage.CLIENTE_SIN_CUENTA);
         }
 
         return cuentaService.obtenerCuentaPorNumero(cliente.getCuenta().getNumeroCuenta());
@@ -576,7 +648,7 @@ public class ClienteServiceImpl implements ClienteService {
     @Transactional
     public LoginResponse autenticarCliente(LoginRequest request) {
         DatosSeguridadBiometria seguridad = seguridadRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado: " + request.getUsername()));
+                .orElseThrow(() -> new RecursoNoEncontradoException(ErrorMessage.AUTH_USUARIO_NO_ENCONTRADO, request.getUsername()));
 
         Cliente cliente = clienteRepository.findAll().stream()
                 .filter(c -> c.getDatosSeguridad() != null && c.getDatosSeguridad().getId().equals(seguridad.getId()))
@@ -586,7 +658,7 @@ public class ClienteServiceImpl implements ClienteService {
         if (cliente != null && !cliente.getActivo()) {
             seguridad.setLoggeado(false);
             seguridadRepository.save(seguridad);
-            throw new ReglaNegocioException("El cliente asociado a este usuario está inactivo");
+            throw new ReglaNegocioException(ErrorMessage.AUTH_CLIENTE_INACTIVO);
         }
 
         boolean autenticado = false;
@@ -604,15 +676,7 @@ public class ClienteServiceImpl implements ClienteService {
         if (!autenticado) {
             seguridad.setLoggeado(false);
             seguridadRepository.save(seguridad);
-            return LoginResponse.builder()
-                    .autenticado(false)
-                    .loggeado(false)
-                    .mensaje("Autenticación fallida. Credenciales o datos biométricos incorrectos.")
-                    .username(request.getUsername())
-                    .clienteId(null)
-                    .estadoSesion("DENEGADA")
-                    .timestamp(LocalDateTime.now())
-                    .build();
+            throw new ReglaNegocioException(ErrorMessage.AUTH_CREDENCIALES_INVALIDAS);
         }
 
         seguridad.setLoggeado(true);
@@ -627,27 +691,27 @@ public class ClienteServiceImpl implements ClienteService {
                 .loggeado(true)
                 .mensaje("Autenticación exitosa mediante " + metodoAuth)
                 .username(seguridad.getUsername())
-                .clienteId(null) // No exponer ID en respuestas de usuario
+                .clienteId(null)
                 .clienteNombreCompleto(nombreCompleto)
                 .numeroCuenta(numeroCuenta)
                 .tipoBiometriaValidada(seguridad.getTipoBiometria())
                 .tokenSimulado("SEC-TOKEN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                 .segundosDesdeUltimaActividad(0L)
-                .estadoSesion("ACTIVA (Límite Inactividad: 5 Segundos)")
+                .estadoSesion("ACTIVA (Límite Inactividad: " + inactividadLimiteSegundos + " Segundos)")
                 .timestamp(LocalDateTime.now())
                 .build();
     }
 
     private void validarMayoriaDeEdad(LocalDate fechaNacimiento) {
         if (fechaNacimiento == null) {
-            throw new ReglaNegocioException("La fecha de nacimiento es obligatoria");
+            throw new ReglaNegocioException(ErrorMessage.FECHA_NACIMIENTO_REQUERIDA);
         }
         if (fechaNacimiento.isAfter(LocalDate.now())) {
-            throw new ReglaNegocioException("La fecha de nacimiento no puede ser una fecha futura");
+            throw new ReglaNegocioException(ErrorMessage.FECHA_NACIMIENTO_FUTURA);
         }
         int edad = Period.between(fechaNacimiento, LocalDate.now()).getYears();
         if (edad < 18) {
-            throw new ReglaNegocioException("El cliente debe ser mayor de edad (18 años o más). Edad calculada: " + edad + " años.");
+            throw new ReglaNegocioException(ErrorMessage.CLIENTE_MENOR_DE_EDAD, "Edad calculada: " + edad + " años.");
         }
     }
 
@@ -670,106 +734,5 @@ public class ClienteServiceImpl implements ClienteService {
                     biometriaDefault
             );
         }
-    }
-
-    private ClienteResponse mapearAClienteResponse(Cliente cliente) {
-        int edad = Period.between(cliente.getFechaNacimiento(), LocalDate.now()).getYears();
-
-        String nombreCompleto = cliente.getNombre() +
-                (cliente.getSegundoNombre() != null && !cliente.getSegundoNombre().isBlank() ? " " + cliente.getSegundoNombre() : "") +
-                " " + cliente.getApellidoPaterno() + " " + cliente.getApellidoMaterno();
-
-        Domicilio dom = cliente.getDomicilio();
-        DomicilioDTO domDTO = DomicilioDTO.builder()
-                .calle(dom.getCalle())
-                .numeroExterior(dom.getNumeroExterior())
-                .numeroInterior(dom.getNumeroInterior())
-                .colonia(dom.getColonia())
-                .municipio(dom.getMunicipio())
-                .estado(dom.getEstado() != null ? dom.getEstado().getDescripcion() : null)
-                .codigoPostal(dom.getCodigoPostal())
-                .pais(dom.getPais() != null ? dom.getPais().getDescripcion() : null)
-                .build();
-
-        DatosLaboralesDTO labDTO = DatosLaboralesDTO.builder()
-                .ocupacion(cliente.getOcupacion() != null ? cliente.getOcupacion().getDescripcion() : null)
-                .empresa(cliente.getEmpresa())
-                .ingresoMensual(cliente.getIngresoMensual() != null
-                        ? cliente.getIngresoMensual().setScale(2, RoundingMode.HALF_UP)
-                        : null)
-                .build();
-
-        CuentaResponse cuentaResponse = null;
-        if (cliente.getCuenta() != null) {
-            cuentaResponse = CuentaResponse.builder()
-                    .id(cliente.getCuenta().getId())
-                    .numeroCuenta(cliente.getCuenta().getNumeroCuenta())
-                    .saldo(cliente.getCuenta().getSaldo() != null
-                            ? cliente.getCuenta().getSaldo().setScale(2, RoundingMode.HALF_UP)
-                            : null)
-                    .estatus(cliente.getCuenta().getEstatus())
-                    .fechaCreacion(cliente.getCuenta().getFechaCreacion())
-                    .clienteNombreCompleto(nombreCompleto)
-                    .clienteCurp(cliente.getCurp())
-                    .build();
-        }
-
-        String username = null;
-        TipoBiometria tipoBio = null;
-        String hashBioResumido = null;
-        Boolean loggeado = false;
-        Long segundosInactividad = null;
-
-        if (cliente.getDatosSeguridad() != null) {
-            var seguridad = cliente.getDatosSeguridad();
-            username = seguridad.getUsername();
-            tipoBio = seguridad.getTipoBiometria();
-            String fullHash = seguridad.getHashBiometrico();
-            hashBioResumido = fullHash != null && fullHash.length() > 12 ? fullHash.substring(0, 12) + "..." : fullHash;
-
-            if (seguridad.getUltimaActividad() != null) {
-                segundosInactividad = Duration.between(seguridad.getUltimaActividad(), LocalDateTime.now()).getSeconds();
-                
-                if (Boolean.TRUE.equals(seguridad.getLoggeado()) && segundosInactividad <= 5) {
-                    loggeado = true;
-                    seguridad.setUltimaActividad(LocalDateTime.now());
-                } else {
-                    seguridad.setLoggeado(false);
-                    loggeado = false;
-                }
-                seguridadRepository.save(seguridad);
-            } else {
-                loggeado = Boolean.TRUE.equals(seguridad.getLoggeado());
-            }
-        }
-
-        return ClienteResponse.builder()
-                .id(cliente.getId())
-                .nombre(cliente.getNombre())
-                .segundoNombre(cliente.getSegundoNombre())
-                .apellidoPaterno(cliente.getApellidoPaterno())
-                .apellidoMaterno(cliente.getApellidoMaterno())
-                .nombreCompleto(nombreCompleto)
-                .fechaNacimiento(cliente.getFechaNacimiento())
-                .edad(edad)
-                .curp(cliente.getCurp())
-                .rfc(cliente.getRfc())
-                .sexo(cliente.getSexo() != null ? cliente.getSexo().getCodigo() : null)
-                .nacionalidad(cliente.getNacionalidad() != null ? cliente.getNacionalidad().getDescripcion() : null)
-                .estadoCivil(cliente.getEstadoCivil() != null ? cliente.getEstadoCivil().getCodigo() : null)
-                .correo(cliente.getCorreo())
-                .telefonoMovil(cliente.getTelefonoMovil())
-                .telefonoAlternativo(cliente.getTelefonoAlternativo())
-                .domicilio(domDTO)
-                .laboral(labDTO)
-                .cuenta(cuentaResponse)
-                .username(username)
-                .loggeado(loggeado)
-                .tipoBiometriaRegistrada(tipoBio)
-                .hashBiometricoResumido(hashBioResumido)
-                .segundosUltimaActividad(segundosInactividad)
-                .activo(cliente.getActivo())
-                .fechaRegistro(cliente.getFechaRegistro())
-                .build();
     }
 }

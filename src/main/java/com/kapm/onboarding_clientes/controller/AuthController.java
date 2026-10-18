@@ -4,19 +4,14 @@ import com.kapm.onboarding_clientes.dto.request.LoginRequest;
 import com.kapm.onboarding_clientes.dto.request.UsuarioSesionRequest;
 import com.kapm.onboarding_clientes.dto.response.ApiResponse;
 import com.kapm.onboarding_clientes.dto.response.LoginResponse;
-import com.kapm.onboarding_clientes.exception.RecursoNoEncontradoException;
-import com.kapm.onboarding_clientes.model.DatosSeguridadBiometria;
-import com.kapm.onboarding_clientes.repository.DatosSeguridadBiometriaRepository;
 import com.kapm.onboarding_clientes.service.ClienteService;
+import com.kapm.onboarding_clientes.service.SeguridadBiometriaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.Duration;
-import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -25,71 +20,26 @@ import java.time.LocalDateTime;
 public class AuthController {
 
     private final ClienteService clienteService;
-    private final DatosSeguridadBiometriaRepository seguridadRepository;
+    private final SeguridadBiometriaService seguridadBiometriaService;
 
     @PostMapping("/login")
     @Operation(summary = "Autenticación segura (Request Body con Password Cifrada o Biometría)", description = "Permite autenticar a un usuario registrado mediante su contraseña cifrada con BCrypt o su patrón biométrico encriptado en SHA-256 en el Request Body. Activa la bandera 'loggeado = true' e inicia el contador de actividad (Límite: 5s).")
     public ResponseEntity<ApiResponse<LoginResponse>> autenticar(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = clienteService.autenticarCliente(request);
-        if (response.isAutenticado()) {
-            return ResponseEntity.ok(ApiResponse.exito(response.getMensaje(), response));
-        } else {
-            return ResponseEntity.badRequest().body(ApiResponse.error(response.getMensaje()));
-        }
+        return ResponseEntity.ok(ApiResponse.exito(response.getMensaje(), response));
     }
 
     @PostMapping("/estado")
     @Operation(summary = "Consultar estado de sesión y temporizador de inactividad 5s (Request Body)", description = "Retorna el valor 'loggeado' (true/false) del usuario especificando el tiempo transcurrido desde su última actividad. Recibe el 'username' en el Request Body. Si supera los 5 segundos de inactividad, la sesión pasa automáticamente a false. Cero PathVariable.")
     public ResponseEntity<ApiResponse<LoginResponse>> consultarEstadoSesion(@Valid @RequestBody UsuarioSesionRequest request) {
-        String username = request.getUsername();
-        DatosSeguridadBiometria seguridad = seguridadRepository.findByUsername(username)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado: " + username));
-
-        boolean loggeado = false;
-        long segundosInactividad = 0;
-        String estado;
-
-        if (seguridad.getUltimaActividad() != null) {
-            segundosInactividad = Duration.between(seguridad.getUltimaActividad(), LocalDateTime.now()).getSeconds();
-            if (Boolean.TRUE.equals(seguridad.getLoggeado()) && segundosInactividad <= 5) {
-                loggeado = true;
-                estado = "SESIÓN ACTIVA (Última actividad hace " + segundosInactividad + "s)";
-                seguridad.setUltimaActividad(LocalDateTime.now());
-            } else {
-                seguridad.setLoggeado(false);
-                loggeado = false;
-                estado = "SESIÓN EXPIRADA POR INACTIVIDAD (Superó el límite de 5s: " + segundosInactividad + "s transcurridos)";
-            }
-            seguridadRepository.save(seguridad);
-        } else {
-            loggeado = Boolean.TRUE.equals(seguridad.getLoggeado());
-            estado = loggeado ? "SESIÓN ACTIVA" : "SESIÓN INACTIVA";
-        }
-
-        LoginResponse response = LoginResponse.builder()
-                .autenticado(loggeado)
-                .loggeado(loggeado)
-                .username(seguridad.getUsername())
-                .tipoBiometriaValidada(seguridad.getTipoBiometria())
-                .segundosDesdeUltimaActividad(segundosInactividad)
-                .estadoSesion(estado)
-                .mensaje("Estado de sesión de usuario: loggeado=" + loggeado)
-                .timestamp(LocalDateTime.now())
-                .build();
-
+        LoginResponse response = seguridadBiometriaService.consultarEstadoSesion(request.getUsername());
         return ResponseEntity.ok(ApiResponse.exito(response.getMensaje(), response));
     }
 
     @PostMapping("/logout")
     @Operation(summary = "Cerrar Sesión de Usuario (Request Body)", description = "Cambia manualmente el estado 'loggeado' a false para el usuario especificado en el Request Body. Cero PathVariable.")
     public ResponseEntity<ApiResponse<Void>> logout(@Valid @RequestBody UsuarioSesionRequest request) {
-        String username = request.getUsername();
-        DatosSeguridadBiometria seguridad = seguridadRepository.findByUsername(username)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado: " + username));
-
-        seguridad.setLoggeado(false);
-        seguridadRepository.save(seguridad);
-
-        return ResponseEntity.ok(ApiResponse.exito("Sesión cerrada exitosamente para el usuario " + username + " (loggeado = false)", null));
+        seguridadBiometriaService.cerrarSesion(request.getUsername());
+        return ResponseEntity.ok(ApiResponse.exito("Sesión cerrada exitosamente para el usuario " + request.getUsername() + " (loggeado = false)", null));
     }
 }

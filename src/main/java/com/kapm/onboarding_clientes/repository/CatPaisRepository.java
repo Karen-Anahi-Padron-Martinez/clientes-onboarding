@@ -1,6 +1,6 @@
 package com.kapm.onboarding_clientes.repository;
 
-import com.kapm.onboarding_clientes.model.catalogo.CatPais;
+import com.kapm.onboarding_clientes.entity.catalogo.CatPais;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

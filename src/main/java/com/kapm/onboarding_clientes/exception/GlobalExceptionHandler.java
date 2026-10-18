@@ -1,220 +1,270 @@
 package com.kapm.onboarding_clientes.exception;
 
-import com.kapm.onboarding_clientes.dto.response.ErrorResponse;
+import com.kapm.onboarding_clientes.dto.response.GenericResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Manejador global centralizado de excepciones con @RestControllerAdvice y @Slf4j.
+ * Estandariza TODAS las respuestas de error a ÚNICAMENTE dos atributos:
+ * { "codigo": <número>, "mensaje": "<texto>" }
+ * Protege información sensible, registra trazas en log.error solo para 500
+ * y advertencias en log.warn para 4xx.
+ */
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // =========================================================================
+    // 1. BEAN VALIDATION (400) - MethodArgumentNotValidException
+    // =========================================================================
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<GenericResponse> manejarMethodArgumentNotValid(
+            MethodArgumentNotValidException ex, HttpServletRequest request) {
+
+        log.warn("Falla de Bean Validation en ruta {}: {} error(es)", request.getRequestURI(), ex.getBindingResult().getErrorCount());
+
+        Map<String, String> errores = new LinkedHashMap<>();
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            errores.put(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+
+        String mensaje = ErrorMessage.DATOS_INVALIDOS.getMensaje() + ": " + errores;
+
+        GenericResponse response = new GenericResponse(ErrorMessage.DATOS_INVALIDOS.getCodigo(), mensaje);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    // =========================================================================
+    // 2. CUERPO JSON MALFORMADO O ILEGIBLE (400) - HttpMessageNotReadableException
+    // =========================================================================
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<GenericResponse> manejarHttpMessageNotReadable(
+            HttpMessageNotReadableException ex, HttpServletRequest request) {
+
+        log.warn("Cuerpo de solicitud mal formado o con propiedades no permitidas en ruta {}: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorMessage em = ErrorMessage.JSON_MALFORMADO;
+        Throwable cause = ex.getCause();
+        while (cause != null) {
+            if (cause instanceof com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException) {
+                em = ErrorMessage.CAMPO_NO_MODIFICABLE;
+                break;
+            }
+            cause = cause.getCause();
+        }
+
+        GenericResponse response = new GenericResponse(
+                em.getCodigo(),
+                em.getMensaje()
+        );
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    // =========================================================================
+    // 3. RECURSO NO ENCONTRADO (404) - RecursoNoEncontradoException, NoResourceFoundException
+    // =========================================================================
     @ExceptionHandler(RecursoNoEncontradoException.class)
-    public ResponseEntity<ErrorResponse> manejarRecursoNoEncontrado(
+    public ResponseEntity<GenericResponse> manejarRecursoNoEncontrado(
             RecursoNoEncontradoException ex, HttpServletRequest request) {
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .exito(false)
-                .status(HttpStatus.NOT_FOUND.value())
-                .error(HttpStatus.NOT_FOUND.getReasonPhrase())
-                .mensaje(ex.getMessage())
-                .ruta(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
 
-        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+        log.warn("Recurso no encontrado en ruta {}: [{}] {}", request.getRequestURI(), ex.getCodigo(), ex.getMessage());
+
+        GenericResponse response = new GenericResponse(ex.getCodigo(), ex.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<GenericResponse> manejarNoResourceFound(
+            NoResourceFoundException ex, HttpServletRequest request) {
+
+        log.warn("Ruta no encontrada en el servidor: {}", request.getRequestURI());
+
+        GenericResponse response = new GenericResponse(
+                ErrorMessage.RECURSO_NO_ENCONTRADO.getCodigo(),
+                ErrorMessage.RECURSO_NO_ENCONTRADO.getMensaje()
+        );
+        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+    }
+
+    // =========================================================================
+    // 4. RECURSO DUPLICADO (409) - RecursoDuplicadoException
+    // =========================================================================
     @ExceptionHandler(RecursoDuplicadoException.class)
-    public ResponseEntity<ErrorResponse> manejarRecursoDuplicado(
+    public ResponseEntity<GenericResponse> manejarRecursoDuplicado(
             RecursoDuplicadoException ex, HttpServletRequest request) {
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .exito(false)
-                .status(HttpStatus.CONFLICT.value())
-                .error(HttpStatus.CONFLICT.getReasonPhrase())
-                .mensaje(ex.getMessage())
-                .ruta(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
 
-        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+        log.warn("Conflicto de recurso duplicado en ruta {}: [{}] {}", request.getRequestURI(), ex.getCodigo(), ex.getMessage());
+
+        GenericResponse response = new GenericResponse(ex.getCodigo(), ex.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
+    // =========================================================================
+    // 5. REGLAS DE NEGOCIO Y VALIDACIÓN PERSONALIZADA (400)
+    // =========================================================================
     @ExceptionHandler(ReglaNegocioException.class)
-    public ResponseEntity<ErrorResponse> manejarReglaNegocio(
+    public ResponseEntity<GenericResponse> manejarReglaNegocio(
             ReglaNegocioException ex, HttpServletRequest request) {
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .exito(false)
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Violación de Regla de Negocio")
-                .mensaje(ex.getMessage())
-                .ruta(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
 
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+        log.warn("Violación de regla de negocio en ruta {}: [{}] {}", request.getRequestURI(), ex.getCodigo(), ex.getMessage());
+
+        GenericResponse response = new GenericResponse(ex.getCodigo(), ex.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(ErrorValidacionException.class)
-    public ResponseEntity<ErrorResponse> manejarErrorValidacionPersonalizado(
+    public ResponseEntity<GenericResponse> manejarErrorValidacion(
             ErrorValidacionException ex, HttpServletRequest request) {
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .exito(false)
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Error de Validación de Datos")
-                .mensaje(ex.getMessage())
-                .erroresValidacion(ex.getErroresValidacion())
-                .ruta(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
 
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+        log.warn("Error de validación en ruta {}: [{}] {}", request.getRequestURI(), ex.getCodigo(), ex.getMessage());
+
+        String mensaje = ex.getErroresValidacion() != null && !ex.getErroresValidacion().isEmpty()
+                ? ex.getMessage() + ": " + new LinkedHashMap<>(ex.getErroresValidacion())
+                : ex.getMessage();
+
+        GenericResponse response = new GenericResponse(ex.getCodigo(), mensaje);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> manejarValidacionSpring(
-            MethodArgumentNotValidException ex, HttpServletRequest request) {
-        
-        Map<String, String> errores = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String campo = ((FieldError) error).getField();
-            String mensaje = error.getDefaultMessage();
-            errores.put(campo, mensaje);
-        });
+    // =========================================================================
+    // 6. CONFLICTO DE INTEGRIDAD DE DATOS (409) - DataIntegrityViolationException
+    // =========================================================================
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<GenericResponse> manejarDataIntegrityViolation(
+            DataIntegrityViolationException ex, HttpServletRequest request) {
 
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .exito(false)
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Error de Validación de Parámetros")
-                .mensaje("La solicitud contiene campos inválidos o incompletos")
-                .erroresValidacion(errores)
-                .ruta(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
+        log.warn("Violación de integridad de datos en BD al procesar ruta {}: {}", request.getRequestURI(), ex.getMessage());
 
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+        GenericResponse response = new GenericResponse(
+                ErrorMessage.CONFLICTO_INTEGRIDAD.getCodigo(),
+                ErrorMessage.CONFLICTO_INTEGRIDAD.getMensaje()
+        );
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
+    // =========================================================================
+    // 7. MÉTODO HTTP NO PERMITIDO (405) - HttpRequestMethodNotSupportedException
+    // =========================================================================
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<GenericResponse> manejarMetodoNoSoportado(
+            HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+
+        log.warn("Método HTTP {} no soportado en ruta {}", ex.getMethod(), request.getRequestURI());
+
+        GenericResponse response = new GenericResponse(
+                ErrorMessage.METODO_NO_PERMITIDO.getCodigo(),
+                ErrorMessage.METODO_NO_PERMITIDO.getMensaje()
+        );
+        return new ResponseEntity<>(response, HttpStatus.METHOD_NOT_ALLOWED);
+    }
+
+    // =========================================================================
+    // 8. MEDIA TYPE NO SOPORTADO (415) - HttpMediaTypeNotSupportedException
+    // =========================================================================
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<GenericResponse> manejarMediaTypeNoSoportado(
+            HttpMediaTypeNotSupportedException ex, HttpServletRequest request) {
+
+        log.warn("Tipo de contenido multimedia {} no soportado en ruta {}", ex.getContentType(), request.getRequestURI());
+
+        GenericResponse response = new GenericResponse(
+                ErrorMessage.MEDIA_TYPE_NO_SOPORTADO.getCodigo(),
+                ErrorMessage.MEDIA_TYPE_NO_SOPORTADO.getMensaje()
+        );
+        return new ResponseEntity<>(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    // =========================================================================
+    // VALIDACIONES ADICIONALES DE PARÁMETROS (400)
+    // =========================================================================
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ErrorResponse> manejarConstraintViolation(
+    public ResponseEntity<GenericResponse> manejarConstraintViolation(
             ConstraintViolationException ex, HttpServletRequest request) {
 
-        Map<String, String> errores = new HashMap<>();
-        ex.getConstraintViolations().forEach(violation -> {
-            String property = violation.getPropertyPath().toString();
-            errores.put(property, violation.getMessage());
-        });
+        log.warn("Violación de restricciones de validación en ruta {}: {}", request.getRequestURI(), ex.getMessage());
 
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .exito(false)
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Error de Restricción de Validación")
-                .mensaje("Uno o más parámetros no cumplen las restricciones de validación")
-                .erroresValidacion(errores)
-                .ruta(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
+        Map<String, String> errores = new LinkedHashMap<>();
+        ex.getConstraintViolations().forEach(v -> errores.put(v.getPropertyPath().toString(), v.getMessage()));
 
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+        String mensaje = ErrorMessage.DATOS_INVALIDOS.getMensaje() + ": " + errores;
+        GenericResponse response = new GenericResponse(ErrorMessage.DATOS_INVALIDOS.getCodigo(), mensaje);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(HandlerMethodValidationException.class)
-    public ResponseEntity<ErrorResponse> manejarHandlerMethodValidation(
+    public ResponseEntity<GenericResponse> manejarHandlerMethodValidation(
             HandlerMethodValidationException ex, HttpServletRequest request) {
 
-        Map<String, String> errores = new HashMap<>();
+        log.warn("Error de validación en controlador en ruta {}: {}", request.getRequestURI(), ex.getMessage());
+
+        Map<String, String> errores = new LinkedHashMap<>();
         ex.getAllErrors().forEach(err -> {
             String campo = err.getCodes() != null && err.getCodes().length > 0 ? err.getCodes()[0] : "parametro";
             errores.put(campo, err.getDefaultMessage());
         });
 
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .exito(false)
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Error de Validación en Parámetro de Solicitud")
-                .mensaje("Los parámetros de la URL no cumplen con las reglas requeridas")
-                .erroresValidacion(errores)
-                .ruta(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
-
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+        String mensaje = ErrorMessage.DATOS_INVALIDOS.getMensaje() + ": " + errores;
+        GenericResponse response = new GenericResponse(ErrorMessage.DATOS_INVALIDOS.getCodigo(), mensaje);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> manejarTypeMismatch(
+    public ResponseEntity<GenericResponse> manejarTypeMismatch(
             MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
 
-        ErrorResponse error = ErrorResponse.builder()
-                .exito(false)
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Tipo de Parámetro Incorrecto")
-                .mensaje("El valor proporcionado para el parámetro '" + ex.getName() + "' no es válido: " + ex.getValue())
-                .ruta(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
+        log.warn("Discrepancia de tipo de parámetro en ruta {}: parámetro '{}'", request.getRequestURI(), ex.getName());
 
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+        GenericResponse response = new GenericResponse(
+                ErrorMessage.TIPO_PARAMETRO_INVALIDO.getCodigo(),
+                ErrorMessage.TIPO_PARAMETRO_INVALIDO.getMensaje()
+        );
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> manejarIllegalArgument(
+    public ResponseEntity<GenericResponse> manejarIllegalArgument(
             IllegalArgumentException ex, HttpServletRequest request) {
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .exito(false)
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
-                .mensaje(ex.getMessage())
-                .ruta(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
 
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+        log.warn("Argumento inválido en ruta {}: {}", request.getRequestURI(), ex.getMessage());
+
+        GenericResponse response = new GenericResponse(
+                ErrorMessage.DATOS_INVALIDOS.getCodigo(),
+                ex.getMessage() != null && !ex.getMessage().isBlank() ? ex.getMessage() : ErrorMessage.DATOS_INVALIDOS.getMensaje()
+        );
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
-    public ResponseEntity<ErrorResponse> manejarNoResourceFound(
-            org.springframework.web.servlet.resource.NoResourceFoundException ex, HttpServletRequest request) {
-
-        ErrorResponse error = ErrorResponse.builder()
-                .exito(false)
-                .status(HttpStatus.NOT_FOUND.value())
-                .error("Ruta no encontrada")
-                .mensaje("La ruta '" + request.getRequestURI() + "' no existe. Recuerda usar el plural '/api/clientes'.")
-                .ruta(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
-
-        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
-    }
-
+    // =========================================================================
+    // 99. FALLBACK DE ERROR INESPERADO (500) - Exception
+    // =========================================================================
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> manejarExcepcionGeneral(
+    public ResponseEntity<GenericResponse> manejarExcepcionGeneral(
             Exception ex, HttpServletRequest request) {
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .exito(false)
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .error(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase())
-                .mensaje("Ocurrió un error interno en el servidor: " + ex.getMessage())
-                .ruta(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
 
-        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+        log.error("Error no controlado en el servidor al procesar ruta: " + request.getRequestURI(), ex);
+
+        GenericResponse response = new GenericResponse(
+                ErrorMessage.ERROR_INTERNO.getCodigo(),
+                ErrorMessage.ERROR_INTERNO.getMensaje()
+        );
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

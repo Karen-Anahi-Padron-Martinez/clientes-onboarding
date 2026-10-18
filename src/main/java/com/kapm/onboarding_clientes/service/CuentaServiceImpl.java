@@ -2,12 +2,14 @@ package com.kapm.onboarding_clientes.service;
 
 import com.kapm.onboarding_clientes.dto.response.CuentaResponse;
 import com.kapm.onboarding_clientes.dto.response.SaldoResponse;
+import com.kapm.onboarding_clientes.entity.Cliente;
+import com.kapm.onboarding_clientes.entity.Cuenta;
+import com.kapm.onboarding_clientes.entity.EstatusCuenta;
+import com.kapm.onboarding_clientes.entity.Saldo;
 import com.kapm.onboarding_clientes.exception.CuentaNoEncontradaException;
+import com.kapm.onboarding_clientes.exception.ErrorMessage;
 import com.kapm.onboarding_clientes.exception.ReglaNegocioException;
-import com.kapm.onboarding_clientes.model.Cliente;
-import com.kapm.onboarding_clientes.model.Cuenta;
-import com.kapm.onboarding_clientes.model.EstatusCuenta;
-import com.kapm.onboarding_clientes.model.Saldo;
+import com.kapm.onboarding_clientes.mapper.ClienteMapper;
 import com.kapm.onboarding_clientes.repository.ClienteRepository;
 import com.kapm.onboarding_clientes.repository.CuentaRepository;
 import com.kapm.onboarding_clientes.repository.SaldoRepository;
@@ -16,9 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.security.SecureRandom;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +31,7 @@ public class CuentaServiceImpl implements CuentaService {
     private final CuentaRepository cuentaRepository;
     private final ClienteRepository clienteRepository;
     private final SaldoRepository saldoRepository;
+    private final ClienteMapper clienteMapper;
     private static final BigDecimal SALDO_INICIAL_DEFAULT = new BigDecimal("1000.00");
     private final SecureRandom random = new SecureRandom();
 
@@ -40,7 +41,7 @@ public class CuentaServiceImpl implements CuentaService {
         BigDecimal saldo = (saldoInicial != null) ? saldoInicial : SALDO_INICIAL_DEFAULT;
 
         if (saldo.compareTo(BigDecimal.ZERO) < 0) {
-            throw new ReglaNegocioException("El saldo inicial de la cuenta no puede ser negativo");
+            throw new ReglaNegocioException(ErrorMessage.SALDO_INICIAL_NEGATIVO);
         }
 
         String numeroCuenta = generarNumeroCuentaUnico();
@@ -78,16 +79,20 @@ public class CuentaServiceImpl implements CuentaService {
     @Transactional(readOnly = true)
     public CuentaResponse obtenerCuentaPorNumero(String numeroCuenta) {
         Cuenta cuenta = cuentaRepository.findByNumeroCuenta(numeroCuenta)
-                .orElseThrow(() -> new CuentaNoEncontradaException("No se encontró la cuenta con el número: " + numeroCuenta));
+                .orElseThrow(() -> new CuentaNoEncontradaException(ErrorMessage.CUENTA_NO_ENCONTRADA, numeroCuenta));
 
-        return mapearACuentaResponse(cuenta);
+        Optional<Cliente> clienteOpt = clienteRepository.findByCuentaNumeroCuenta(numeroCuenta);
+        return clienteMapper.mapearACuentaResponse(cuenta, clienteOpt);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<CuentaResponse> obtenerCuentasActivas() {
         return cuentaRepository.findByEstatus(EstatusCuenta.ACTIVA).stream()
-                .map(this::mapearACuentaResponse)
+                .map(cuenta -> {
+                    Optional<Cliente> clienteOpt = clienteRepository.findByCuentaNumeroCuenta(cuenta.getNumeroCuenta());
+                    return clienteMapper.mapearACuentaResponse(cuenta, clienteOpt);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -95,32 +100,9 @@ public class CuentaServiceImpl implements CuentaService {
     @Transactional
     public SaldoResponse obtenerSaldoCuenta(String numeroCuenta) {
         Cuenta cuenta = cuentaRepository.findByNumeroCuenta(numeroCuenta)
-                .orElseThrow(() -> new CuentaNoEncontradaException("No se encontró la cuenta con el número: " + numeroCuenta));
+                .orElseThrow(() -> new CuentaNoEncontradaException(ErrorMessage.CUENTA_NO_ENCONTRADA, numeroCuenta));
 
         Optional<Cliente> clienteOpt = clienteRepository.findByCuentaNumeroCuenta(numeroCuenta);
-
-        String titularNombre = clienteOpt.map(c -> c.getNombre() + " " + c.getApellidoPaterno() + " " + c.getApellidoMaterno()).orElse("No asignado");
-        String titularCurp = clienteOpt.map(Cliente::getCurp).orElse("N/A");
-
-        boolean loggeado = false;
-        long segundosInactividad = 0;
-
-        if (clienteOpt.isPresent() && clienteOpt.get().getDatosSeguridad() != null) {
-            var seguridad = clienteOpt.get().getDatosSeguridad();
-            if (seguridad.getUltimaActividad() != null) {
-                segundosInactividad = Duration.between(seguridad.getUltimaActividad(), LocalDateTime.now()).getSeconds();
-                // 5-second inactivity check
-                if (Boolean.TRUE.equals(seguridad.getLoggeado()) && segundosInactividad <= 5) {
-                    loggeado = true;
-                    seguridad.setUltimaActividad(LocalDateTime.now());
-                } else {
-                    seguridad.setLoggeado(false);
-                    loggeado = false;
-                }
-            } else {
-                loggeado = Boolean.TRUE.equals(seguridad.getLoggeado());
-            }
-        }
 
         Saldo saldoDetalle = saldoRepository.findByCuentaNumeroCuenta(numeroCuenta)
                 .orElseGet(() -> Saldo.builder()
@@ -130,39 +112,6 @@ public class CuentaServiceImpl implements CuentaService {
                         .fechaUltimaActualizacion(LocalDateTime.now())
                         .build());
 
-        return SaldoResponse.builder()
-                .numeroCuenta(cuenta.getNumeroCuenta())
-                .saldoDisponible(saldoDetalle.getSaldoDisponible() != null
-                        ? saldoDetalle.getSaldoDisponible().setScale(2, RoundingMode.HALF_UP)
-                        : null)
-                .saldoContable(saldoDetalle.getSaldoContable() != null
-                        ? saldoDetalle.getSaldoContable().setScale(2, RoundingMode.HALF_UP)
-                        : null)
-                .estatus(cuenta.getEstatus())
-                .titularNombreCompleto(titularNombre)
-                .titularCurp(titularCurp)
-                .usuarioLoggeado(loggeado)
-                .segundosInactividad(segundosInactividad)
-                .fechaConsulta(LocalDateTime.now())
-                .build();
-    }
-
-    private CuentaResponse mapearACuentaResponse(Cuenta cuenta) {
-        Optional<Cliente> clienteOpt = clienteRepository.findByCuentaNumeroCuenta(cuenta.getNumeroCuenta());
-
-        String titularNombre = clienteOpt.map(c -> c.getNombre() + " " + c.getApellidoPaterno() + " " + c.getApellidoMaterno()).orElse("Sin Titular");
-        String titularCurp = clienteOpt.map(Cliente::getCurp).orElse("N/A");
-
-        return CuentaResponse.builder()
-                .id(cuenta.getId())
-                .numeroCuenta(cuenta.getNumeroCuenta())
-                .saldo(cuenta.getSaldo() != null
-                        ? cuenta.getSaldo().setScale(2, RoundingMode.HALF_UP)
-                        : null)
-                .estatus(cuenta.getEstatus())
-                .fechaCreacion(cuenta.getFechaCreacion())
-                .clienteNombreCompleto(titularNombre)
-                .clienteCurp(titularCurp)
-                .build();
+        return clienteMapper.mapearASaldoResponse(cuenta, clienteOpt, saldoDetalle);
     }
 }

@@ -1,77 +1,73 @@
 package com.kapm.onboarding_clientes.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.kapm.onboarding_clientes.validation.ValidationMessages;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
-import java.time.LocalDate;
-
+/**
+ * DTO para la actualización de cliente.
+ * Los datos de identidad (nombre, segundoNombre, apellidos, fechaNacimiento, curp, rfc y nacionalidad)
+ * NO son modificables bajo ninguna circunstancia.
+ * CURP y RFC solo se permiten en el cuerpo como identificadores únicos de búsqueda.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = false)
+@Schema(description = "Solicitud de actualización de cliente. Excluye datos de identidad inmutables.")
 public class ClienteUpdateRequest {
 
-    // Datos Personales (Modificables)
-    @NotBlank(message = "El nombre es obligatorio")
-    @Size(min = 2, max = 50, message = "El nombre debe tener entre 2 y 50 caracteres")
-    @Pattern(regexp = "^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$", message = "El nombre solo debe contener letras y espacios")
-    private String nombre;
-
-    @Size(max = 50, message = "El segundo nombre no debe exceder 50 caracteres")
-    @Pattern(regexp = "^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]*$", message = "El segundo nombre solo debe contener letras y espacios")
-    private String segundoNombre;
-
-    @NotBlank(message = "El apellido paterno es obligatorio")
-    @Size(min = 2, max = 50, message = "El apellido paterno debe tener entre 2 y 50 caracteres")
-    @Pattern(regexp = "^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$", message = "El apellido paterno solo debe contener letras y espacios")
-    private String apellidoPaterno;
-
-    @NotBlank(message = "El apellido materno es obligatorio")
-    @Size(min = 2, max = 50, message = "El apellido materno debe tener entre 2 y 50 caracteres")
-    @Pattern(regexp = "^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$", message = "El apellido materno solo debe contener letras y espacios")
-    private String apellidoMaterno;
-
-    @NotNull(message = "La fecha de nacimiento es obligatoria")
-    @Past(message = "La fecha de nacimiento no puede ser una fecha futura")
-    private LocalDate fechaNacimiento;
-
-    // CURP y RFC (Opcionales en la actualización; si se proporcionan, se valida su formato oficial)
-    @Pattern(regexp = "^$|^[a-zA-Z]{4}\\d{6}[hHmM][a-zA-Z]{5}[a-zA-Z0-9]{2}$", message = "El formato de la CURP es inválido (Ej: XXXX000000XXXXXX00)")
+    // Identificadores de búsqueda (Solo lectura / localización; NO modificables en BD)
+    @Pattern(regexp = "^$|^[a-zA-Z]{4}\\d{6}[hHmM][a-zA-Z]{5}[a-zA-Z0-9]{2}$", message = ValidationMessages.CLIENTE_CURP_PATTERN)
+    @Schema(description = "CURP del cliente para identificar el registro a actualizar (solo búsqueda, inmutable)", example = "MEHC920824HDFRMN09")
     private String curp;
 
-    @Pattern(regexp = "^$|^[a-zA-Z&ñÑ]{3,4}\\d{6}[a-zA-Z0-9]{3}$", message = "El formato de RFC es inválido (debe contener 12 o 13 caracteres)")
+    @Pattern(regexp = "^$|^[a-zA-Z&ñÑ]{3,4}\\d{6}[a-zA-Z0-9]{3}$", message = ValidationMessages.CLIENTE_RFC_PATTERN)
+    @Schema(description = "RFC del cliente para identificar el registro a actualizar (solo búsqueda, inmutable)", example = "MEHC9208243A8")
     private String rfc;
 
-    @NotBlank(message = "El sexo es obligatorio")
+    // Datos Modificables
+    @NotBlank(message = ValidationMessages.CLIENTE_SEXO_OBLIGATORIO)
+    @Schema(description = "Sexo (MASCULINO, FEMENINO, OTRO)", example = "MASCULINO")
     private String sexo;
 
-    @NotBlank(message = "La nacionalidad es obligatoria")
-    private String nacionalidad;
-
-    @NotBlank(message = "El estado civil es obligatorio")
+    @NotBlank(message = ValidationMessages.CLIENTE_ESTADO_CIVIL_OBLIGATORIO)
+    @Schema(description = "Estado civil (SOLTERO, CASADO, DIVORCIADO, etc.)", example = "CASADO")
     private String estadoCivil;
 
-    // Datos de Contacto (Modificables - Excepto correo si es duplicado de otro cliente)
-    @NotBlank(message = "El correo electrónico es obligatorio")
-    @Email(message = "El formato del correo electrónico es inválido")
-    @Size(max = 100, message = "El correo electrónico no debe exceder 100 caracteres")
+    @NotBlank(message = ValidationMessages.CLIENTE_CORREO_OBLIGATORIO)
+    @Email(message = ValidationMessages.CLIENTE_CORREO_EMAIL)
+    @Size(max = 100, message = ValidationMessages.CLIENTE_CORREO_SIZE)
+    @Schema(description = "Correo electrónico actualizado", example = "carlos.actualizado@email.com")
     private String correo;
 
-    @NotBlank(message = "El teléfono móvil es obligatorio")
-    @Pattern(regexp = "^\\d{10}$", message = "El teléfono móvil debe contener exactamente 10 dígitos")
+    @NotBlank(message = ValidationMessages.CLIENTE_TELEFONO_MOVIL_OBLIGATORIO)
+    @Pattern(regexp = "^\\d{10}$", message = ValidationMessages.CLIENTE_TELEFONO_MOVIL_PATTERN)
+    @Schema(description = "Teléfono móvil a 10 dígitos", example = "5598765432")
     private String telefonoMovil;
 
-    @Pattern(regexp = "^(\\d{10})?$", message = "El teléfono alternativo debe contener exactamente 10 dígitos")
+    @Pattern(regexp = "^(\\d{10})?$", message = ValidationMessages.CLIENTE_TELEFONO_ALT_PATTERN)
+    @Schema(description = "Teléfono alternativo opcional a 10 dígitos", example = "5512344321")
     private String telefonoAlternativo;
 
     // Secciones complejas (Modificables)
-    @NotNull(message = "Los datos del domicilio son obligatorios")
+    @NotNull(message = ValidationMessages.CLIENTE_DOMICILIO_OBLIGATORIO)
     @Valid
     private DomicilioDTO domicilio;
 
-    @NotNull(message = "La información laboral es obligatoria")
+    @NotNull(message = ValidationMessages.CLIENTE_LABORAL_OBLIGATORIO)
     @Valid
     private DatosLaboralesDTO laboral;
+
+    @JsonIgnore
+    @AssertTrue(message = ValidationMessages.VALIDAR_ID_PRESENTE)
+    public boolean isIdentificadorPresente() {
+        return (curp != null && !curp.isBlank()) || (rfc != null && !rfc.isBlank());
+    }
 }

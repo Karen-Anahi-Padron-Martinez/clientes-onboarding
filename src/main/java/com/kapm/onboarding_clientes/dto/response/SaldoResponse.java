@@ -2,7 +2,7 @@ package com.kapm.onboarding_clientes.dto.response;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.kapm.onboarding_clientes.config.JacksonConfig;
-import com.kapm.onboarding_clientes.model.EstatusCuenta;
+import com.kapm.onboarding_clientes.entity.EstatusCuenta;
 import lombok.*;
 
 import java.math.BigDecimal;

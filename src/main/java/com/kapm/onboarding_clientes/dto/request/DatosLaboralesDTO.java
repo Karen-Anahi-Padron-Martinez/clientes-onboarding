@@ -3,6 +3,8 @@ package com.kapm.onboarding_clientes.dto.request;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.kapm.onboarding_clientes.config.JacksonConfig;
 import com.kapm.onboarding_clientes.validation.MontoDecimal;
+import com.kapm.onboarding_clientes.validation.ValidationMessages;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,19 +18,23 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Schema(description = "Información laboral y económica del cliente")
 public class DatosLaboralesDTO {
 
-    @NotBlank(message = "La ocupación es obligatoria")
-    @Size(max = 100, message = "La ocupación no debe exceder 100 caracteres")
+    @NotBlank(message = ValidationMessages.LABORAL_OCUPACION_OBLIGATORIO)
+    @Size(max = 100, message = ValidationMessages.LABORAL_OCUPACION_SIZE)
+    @Schema(description = "Ocupación o profesión", example = "Arquitecto de Software")
     private String ocupacion;
 
-    @NotBlank(message = "La empresa es obligatoria")
-    @Size(max = 100, message = "La empresa no debe exceder 100 caracteres")
+    @NotBlank(message = ValidationMessages.LABORAL_EMPRESA_OBLIGATORIO)
+    @Size(max = 100, message = ValidationMessages.LABORAL_EMPRESA_SIZE)
+    @Schema(description = "Nombre de la empresa o centro laboral", example = "Sistemas Financieros MX")
     private String empresa;
 
-    @NotNull(message = "El ingreso mensual es obligatorio")
-    @DecimalMin(value = "0.01", message = "El ingreso mensual debe ser mayor a cero")
-    @MontoDecimal(message = "El ingreso mensual debe tener exactamente 2 decimales (Ej: 5000.00)")
+    @NotNull(message = ValidationMessages.LABORAL_INGRESO_OBLIGATORIO)
+    @DecimalMin(value = "0.01", message = ValidationMessages.LABORAL_INGRESO_MIN)
+    @MontoDecimal(message = ValidationMessages.LABORAL_INGRESO_MONTO)
     @JsonSerialize(using = JacksonConfig.BigDecimalTwoDecimalsSerializer.class)
+    @Schema(description = "Ingreso mensual comprobable (con 2 decimales)", example = "45000.00")
     private BigDecimal ingresoMensual;
 }

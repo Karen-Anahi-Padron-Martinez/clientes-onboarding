@@ -1,78 +1,26 @@
 package com.kapm.onboarding_clientes.service;
 
-import com.kapm.onboarding_clientes.model.DatosSeguridadBiometria;
-import com.kapm.onboarding_clientes.model.TipoBiometria;
-import com.kapm.onboarding_clientes.repository.DatosSeguridadBiometriaRepository;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
+import com.kapm.onboarding_clientes.dto.response.LoginResponse;
+import com.kapm.onboarding_clientes.entity.DatosSeguridadBiometria;
+import com.kapm.onboarding_clientes.entity.TipoBiometria;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
+/**
+ * Interfaz del servicio de seguridad y biometría.
+ * Gestiona el cifrado con BCrypt, hashes SHA-256 de patrones biométricos y control de sesión con límite de inactividad.
+ */
+public interface SeguridadBiometriaService {
 
-@Service
-public class SeguridadBiometriaService {
+    String encriptarPassword(String plainPassword);
 
-    private final PasswordEncoder passwordEncoder;
-    private final DatosSeguridadBiometriaRepository seguridadRepository;
+    boolean validarPassword(String plainPassword, String hashedPassword);
 
-    public SeguridadBiometriaService(DatosSeguridadBiometriaRepository seguridadRepository) {
-        this.passwordEncoder = new BCryptPasswordEncoder();
-        this.seguridadRepository = seguridadRepository;
-    }
+    String generarHashBiometrico(String plantillaBiometrica);
 
+    boolean validarBiometria(String plantillaCapturada, String hashAlmacenado);
 
-    public String encriptarPassword(String plainPassword) {
-        if (plainPassword == null || plainPassword.isBlank()) {
-            throw new IllegalArgumentException("La contraseña no puede estar vacía.");
-        }
-        return passwordEncoder.encode(plainPassword);
-    }
+    DatosSeguridadBiometria crearDatosSeguridad(String username, String rawPassword, TipoBiometria tipoBiometria, String rawBiometria);
 
+    LoginResponse consultarEstadoSesion(String username);
 
-    public boolean validarPassword(String plainPassword, String hashedPassword) {
-        return passwordEncoder.matches(plainPassword, hashedPassword);
-    }
-
-   
-    public String generarHashBiometrico(String plantillaBiometrica) {
-        if (plantillaBiometrica == null || plantillaBiometrica.isBlank()) {
-            throw new IllegalArgumentException("La plantilla biométrica no puede estar vacía.");
-        }
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = digest.digest(plantillaBiometrica.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hashBytes);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Error al generar hash criptográfico para biometría", e);
-        }
-    }
-
-   
-    public boolean validarBiometria(String plantillaCapturada, String hashAlmacenado) {
-        if (plantillaCapturada == null || hashAlmacenado == null) {
-            return false;
-        }
-        String hashCalculado = generarHashBiometrico(plantillaCapturada);
-        return hashCalculado.equalsIgnoreCase(hashAlmacenado);
-    }
-
-  
-    public DatosSeguridadBiometria crearDatosSeguridad(String username, String rawPassword, TipoBiometria tipoBiometria, String rawBiometria) {
-        if (seguridadRepository.existsByUsername(username)) {
-            throw new IllegalArgumentException("El nombre de usuario '" + username + "' ya está registrado");
-        }
-
-        String passwordHash = encriptarPassword(rawPassword);
-        String hashBiometrico = generarHashBiometrico(rawBiometria);
-
-        return DatosSeguridadBiometria.builder()
-                .username(username)
-                .passwordHash(passwordHash)
-                .tipoBiometria(tipoBiometria != null ? tipoBiometria : TipoBiometria.HUELLA_DACTILAR)
-                .hashBiometrico(hashBiometrico)
-                .build();
-    }
+    void cerrarSesion(String username);
 }

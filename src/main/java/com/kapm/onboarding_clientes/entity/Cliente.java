@@ -1,6 +1,6 @@
-package com.kapm.onboarding_clientes.model;
+package com.kapm.onboarding_clientes.entity;
 
-import com.kapm.onboarding_clientes.model.catalogo.*;
+import com.kapm.onboarding_clientes.entity.catalogo.*;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -24,26 +24,26 @@ public class Cliente {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Datos Personales
-    @Column(nullable = false, columnDefinition = "TEXT")
+    // Datos Personales (Campos inmutables post-onboarding con updatable = false)
+    @Column(nullable = false, updatable = false, columnDefinition = "TEXT")
     private String nombre;
 
-    @Column(name = "segundo_nombre", columnDefinition = "TEXT")
+    @Column(name = "segundo_nombre", updatable = false, columnDefinition = "TEXT")
     private String segundoNombre;
 
-    @Column(name = "apellido_paterno", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "apellido_paterno", nullable = false, updatable = false, columnDefinition = "TEXT")
     private String apellidoPaterno;
 
-    @Column(name = "apellido_materno", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "apellido_materno", nullable = false, updatable = false, columnDefinition = "TEXT")
     private String apellidoMaterno;
 
-    @Column(name = "fecha_nacimiento", nullable = false)
+    @Column(name = "fecha_nacimiento", nullable = false, updatable = false)
     private LocalDate fechaNacimiento;
 
-    @Column(nullable = false, unique = true, columnDefinition = "TEXT")
+    @Column(nullable = false, unique = true, updatable = false, columnDefinition = "TEXT")
     private String curp;
 
-    @Column(nullable = false, unique = true, columnDefinition = "TEXT")
+    @Column(nullable = false, unique = true, updatable = false, columnDefinition = "TEXT")
     private String rfc;
 
     @ManyToOne(fetch = FetchType.EAGER)
@@ -51,7 +51,7 @@ public class Cliente {
     private CatSexo sexo;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "nacionalidad_id", referencedColumnName = "id", nullable = false)
+    @JoinColumn(name = "nacionalidad_id", referencedColumnName = "id", nullable = false, updatable = false)
     private CatNacionalidad nacionalidad;
 
     @ManyToOne(fetch = FetchType.EAGER)

@@ -1,5 +1,7 @@
 package com.kapm.onboarding_clientes.dto.request;
 
+import com.kapm.onboarding_clientes.validation.ValidationMessages;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -10,36 +12,45 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Schema(description = "Datos estructurados de domicilio del cliente")
 public class DomicilioDTO {
 
-    @NotBlank(message = "La calle es obligatoria")
-    @Size(max = 100, message = "La calle no debe exceder 100 caracteres")
+    @NotBlank(message = ValidationMessages.DOMICILIO_CALLE_OBLIGATORIO)
+    @Size(max = 100, message = ValidationMessages.DOMICILIO_CALLE_SIZE)
+    @Schema(description = "Nombre de la calle o avenida", example = "Av. Insurgentes Sur")
     private String calle;
 
-    @NotBlank(message = "El número exterior es obligatorio")
-    @Size(max = 20, message = "El número exterior no debe exceder 20 caracteres")
+    @NotBlank(message = ValidationMessages.DOMICILIO_NUM_EXT_OBLIGATORIO)
+    @Size(max = 20, message = ValidationMessages.DOMICILIO_NUM_EXT_SIZE)
+    @Schema(description = "Número exterior", example = "456")
     private String numeroExterior;
 
-    @Size(max = 20, message = "El número interior no debe exceder 20 caracteres")
+    @Size(max = 20, message = ValidationMessages.DOMICILIO_NUM_INT_SIZE)
+    @Schema(description = "Número interior, piso o departamento (opcional)", example = "Piso 8-B")
     private String numeroInterior;
 
-    @NotBlank(message = "La colonia es obligatoria")
-    @Size(max = 100, message = "La colonia no debe exceder 100 caracteres")
+    @NotBlank(message = ValidationMessages.DOMICILIO_COLONIA_OBLIGATORIO)
+    @Size(max = 100, message = ValidationMessages.DOMICILIO_COLONIA_SIZE)
+    @Schema(description = "Colonia o asentamiento", example = "Roma Norte")
     private String colonia;
 
-    @NotBlank(message = "El municipio o alcaldía es obligatorio")
-    @Size(max = 100, message = "El municipio no debe exceder 100 caracteres")
+    @NotBlank(message = ValidationMessages.DOMICILIO_MUNICIPIO_OBLIGATORIO)
+    @Size(max = 100, message = ValidationMessages.DOMICILIO_MUNICIPIO_SIZE)
+    @Schema(description = "Municipio o alcaldía", example = "Cuauhtémoc")
     private String municipio;
 
-    @NotBlank(message = "El estado es obligatorio")
-    @Size(max = 100, message = "El estado no debe exceder 100 caracteres")
+    @NotBlank(message = ValidationMessages.DOMICILIO_ESTADO_OBLIGATORIO)
+    @Size(max = 100, message = ValidationMessages.DOMICILIO_ESTADO_SIZE)
+    @Schema(description = "Entidad Federativa (de las 32 oficiales)", example = "Ciudad de México")
     private String estado;
 
-    @NotBlank(message = "El código postal es obligatorio")
-    @Pattern(regexp = "^\\d{5}$", message = "El código postal debe contener exactamente 5 dígitos")
+    @NotBlank(message = ValidationMessages.DOMICILIO_CP_OBLIGATORIO)
+    @Pattern(regexp = "^\\d{5}$", message = ValidationMessages.DOMICILIO_CP_PATTERN)
+    @Schema(description = "Código postal mexicano (exactamente 5 dígitos)", example = "06700")
     private String codigoPostal;
 
-    @NotBlank(message = "El país es obligatorio")
-    @Size(max = 100, message = "El país no debe exceder 100 caracteres")
+    @NotBlank(message = ValidationMessages.DOMICILIO_PAIS_OBLIGATORIO)
+    @Size(max = 100, message = ValidationMessages.DOMICILIO_PAIS_SIZE)
+    @Schema(description = "País de residencia", example = "México")
     private String pais;
 }

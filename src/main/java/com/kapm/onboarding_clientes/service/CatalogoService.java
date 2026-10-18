@@ -2,7 +2,7 @@ package com.kapm.onboarding_clientes.service;
 
 import com.kapm.onboarding_clientes.dto.response.CatalogoItemDTO;
 import com.kapm.onboarding_clientes.dto.response.CatalogosResponse;
-import com.kapm.onboarding_clientes.model.catalogo.*;
+import com.kapm.onboarding_clientes.entity.catalogo.*;
 
 import java.util.List;
 

@@ -2,10 +2,11 @@ package com.kapm.onboarding_clientes.service;
 
 import com.kapm.onboarding_clientes.dto.response.CatalogoItemDTO;
 import com.kapm.onboarding_clientes.dto.response.CatalogosResponse;
+import com.kapm.onboarding_clientes.exception.ErrorMessage;
 import com.kapm.onboarding_clientes.exception.ReglaNegocioException;
-import com.kapm.onboarding_clientes.model.EstatusCuenta;
-import com.kapm.onboarding_clientes.model.TipoBiometria;
-import com.kapm.onboarding_clientes.model.catalogo.*;
+import com.kapm.onboarding_clientes.entity.EstatusCuenta;
+import com.kapm.onboarding_clientes.entity.TipoBiometria;
+import com.kapm.onboarding_clientes.entity.catalogo.*;
 import com.kapm.onboarding_clientes.repository.*;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -183,7 +184,7 @@ public class CatalogoServiceImpl implements CatalogoService {
     @Override
     public CatSexo buscarSexo(String valor) {
         if (valor == null || valor.isBlank()) {
-            throw new ReglaNegocioException("El sexo es obligatorio");
+            throw new ReglaNegocioException(ErrorMessage.SEXO_INVALIDO);
         }
         String clean = valor.trim().toUpperCase();
         return catSexoRepository.findByCodigoIgnoreCase(clean)
@@ -194,14 +195,14 @@ public class CatalogoServiceImpl implements CatalogoService {
                             return catSexoRepository.save(CatSexo.builder().codigo(s.getCodigo()).descripcion(s.getDescripcion()).build());
                         }
                     }
-                    throw new ReglaNegocioException("El valor de sexo '" + valor + "' no es válido según el catálogo oficial");
+                    throw new ReglaNegocioException(ErrorMessage.SEXO_INVALIDO, valor);
                 });
     }
 
     @Override
     public CatEstadoCivil buscarEstadoCivil(String valor) {
         if (valor == null || valor.isBlank()) {
-            throw new ReglaNegocioException("El estado civil es obligatorio");
+            throw new ReglaNegocioException(ErrorMessage.ESTADO_CIVIL_INVALIDO);
         }
         String clean = valor.trim().toUpperCase().replace("/", "").replace(" ", "_");
         return catEstadoCivilRepository.findByCodigoIgnoreCase(clean)
@@ -212,7 +213,7 @@ public class CatalogoServiceImpl implements CatalogoService {
                             return catEstadoCivilRepository.save(CatEstadoCivil.builder().codigo(e.getCodigo()).descripcion(e.getDescripcion()).build());
                         }
                     }
-                    throw new ReglaNegocioException("El estado civil '" + valor + "' no es válido según el catálogo oficial");
+                    throw new ReglaNegocioException(ErrorMessage.ESTADO_CIVIL_INVALIDO, valor);
                 });
     }
 
@@ -236,7 +237,7 @@ public class CatalogoServiceImpl implements CatalogoService {
     @Override
     public CatOcupacion buscarOcupacion(String valor) {
         if (valor == null || valor.isBlank()) {
-            throw new ReglaNegocioException("La ocupación es obligatoria");
+            throw new ReglaNegocioException(ErrorMessage.OCUPACION_INVALIDA);
         }
         String clean = valor.trim();
         String cleanUpper = clean.toUpperCase().replace(" ", "_");
@@ -255,7 +256,7 @@ public class CatalogoServiceImpl implements CatalogoService {
     @Override
     public CatEstadoRepublica buscarEstadoRepublica(String valor) {
         if (valor == null || valor.isBlank()) {
-            throw new ReglaNegocioException("El estado del domicilio es obligatorio");
+            throw new ReglaNegocioException(ErrorMessage.ESTADO_REPUBLICA_INVALIDO);
         }
         String clean = valor.trim();
         String cleanUpper = clean.toUpperCase()

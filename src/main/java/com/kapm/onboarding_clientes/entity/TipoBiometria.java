@@ -1,4 +1,4 @@
-package com.kapm.onboarding_clientes.model;
+package com.kapm.onboarding_clientes.entity;
 
 public enum TipoBiometria {
     HUELLA_DACTILAR,

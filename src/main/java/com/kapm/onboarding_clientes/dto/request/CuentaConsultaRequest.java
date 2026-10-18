@@ -1,5 +1,6 @@
 package com.kapm.onboarding_clientes.dto.request;
 
+import com.kapm.onboarding_clientes.validation.ValidationMessages;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -14,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Request para consulta de cuenta bancaria y saldo mediante Request Body (sin PathVariable)")
 public class CuentaConsultaRequest {
 
-    @NotBlank(message = "El número de cuenta es obligatorio en el Request Body")
+    @NotBlank(message = ValidationMessages.CONSULTA_CUENTA_OBLIGATORIO)
     @Schema(description = "Número único de cuenta bancaria asignado (10 dígitos)", example = "4819204812")
     private String numeroCuenta;
 }

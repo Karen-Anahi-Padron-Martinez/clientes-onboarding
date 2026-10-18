@@ -2,7 +2,7 @@ package com.kapm.onboarding_clientes.service;
 
 import com.kapm.onboarding_clientes.dto.response.CuentaResponse;
 import com.kapm.onboarding_clientes.dto.response.SaldoResponse;
-import com.kapm.onboarding_clientes.model.Cuenta;
+import com.kapm.onboarding_clientes.entity.Cuenta;
 
 import java.math.BigDecimal;
 import java.util.List;

@@ -1,7 +1,7 @@
 package com.kapm.onboarding_clientes.repository;
 
-import com.kapm.onboarding_clientes.model.Cuenta;
-import com.kapm.onboarding_clientes.model.EstatusCuenta;
+import com.kapm.onboarding_clientes.entity.Cuenta;
+import com.kapm.onboarding_clientes.entity.EstatusCuenta;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

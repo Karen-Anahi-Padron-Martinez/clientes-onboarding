@@ -1,7 +1,7 @@
 package com.kapm.onboarding_clientes.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.kapm.onboarding_clientes.model.TipoBiometria;
+import com.kapm.onboarding_clientes.entity.TipoBiometria;
 import lombok.*;
 
 import java.time.LocalDateTime;

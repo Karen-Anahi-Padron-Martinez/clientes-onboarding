@@ -1,6 +1,6 @@
 package com.kapm.onboarding_clientes.repository;
 
-import com.kapm.onboarding_clientes.model.DatosSeguridadBiometria;
+import com.kapm.onboarding_clientes.entity.DatosSeguridadBiometria;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,7 +1,7 @@
-package com.kapm.onboarding_clientes.model;
+package com.kapm.onboarding_clientes.entity;
 
-import com.kapm.onboarding_clientes.model.catalogo.CatEstadoRepublica;
-import com.kapm.onboarding_clientes.model.catalogo.CatPais;
+import com.kapm.onboarding_clientes.entity.catalogo.CatEstadoRepublica;
+import com.kapm.onboarding_clientes.entity.catalogo.CatPais;
 import jakarta.persistence.*;
 import lombok.*;
 

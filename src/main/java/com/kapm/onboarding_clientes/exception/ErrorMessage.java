@@ -75,10 +75,30 @@ public enum ErrorMessage {
     PAIS_INVALIDO(5, "El país proporcionado no existe en el catálogo oficial"),
     NACIONALIDAD_INVALIDA(5, "La nacionalidad proporcionada no existe en el catálogo oficial"),
     OCUPACION_INVALIDA(5, "La ocupación proporcionada no existe en el catálogo oficial"),
+    PUNTORED_TRANSACCION_RECHAZADA(5, "Transacción rechazada por el proveedor PuntoRed"),
+    PUNTORED_ERROR_AUTENTICACION(5, "Error de autenticación con el proveedor PuntoRed"),
+    CODIGO_2FA_INVALIDO(5, "El código de verificación proporcionado es incorrecto"),
+    CODIGO_2FA_EXPIRADO(5, "El código de verificación ha expirado"),
+    CODIGO_2FA_INTENTOS_AGOTADOS(5, "Ha superado el número máximo de intentos permitidos para el código de verificación"),
+    CODIGO_2FA_YA_USADO(5, "El código de verificación ya ha sido utilizado"),
+    CODIGO_2FA_OPERACION_DISTINTA(5, "El código de verificación no corresponde a los datos de la transacción en curso"),
+    CODIGO_2FA_LIMITE_SOLICITUDES(5, "Ha superado el límite de solicitudes de códigos de verificación. Por favor intente más tarde"),
+    CODIGO_2FA_NO_ENCONTRADO(5, "No existe un código de verificación activo para esta cuenta"),
+    SALDO_INSUFICIENTE(5, "Saldo disponible insuficiente para realizar la operación"),
+    CUENTA_NO_PERTENECE_CLIENTE(5, "La cuenta bancaria no pertenece al cliente especificado"),
+    CUENTA_INACTIVA(5, "La cuenta bancaria se encuentra inactiva o bloqueada"),
+    PRODUCTO_NO_PERMITIDO(5, "El producto o servicio no está permitido o no se encuentra activo en el catálogo"),
+    TELEFONO_REQUERIDO_RECARGA(5, "El número de teléfono celular (10 dígitos) es obligatorio para recargas de tiempo aire"),
+    MONTO_FUERA_DE_RANGO(5, "El monto solicitado no está dentro de los valores permitidos para el producto"),
+    PAGO_NO_CONCILIABLE(5, "El pago no se encuentra en un estado que permita conciliación"),
+    LIMITE_CONSULTAS_CATALOGO(5, "Se alcanzó el límite diario de consultas del catálogo del proveedor; intente mañana"),
+    REFERENCIA_REQUERIDA_SERVICIO(5, "La referencia del recibo o servicio es obligatoria para pagos de servicios"),
 
     // =========================================================================
     // 6. CONFLICTO DE INTEGRIDAD (Código: 6)
     // =========================================================================
+    IDEMPOTENCY_KEY_REUTILIZADA(4, "La llave de idempotencia ya fue utilizada para una operación distinta"),
+    OPERACION_NO_AUTORIZADA(9, "No tiene autorización para operar sobre el recurso solicitado"),
     CONFLICTO_INTEGRIDAD(6, "Conflicto de integridad de datos en el sistema"),
     INTEGRIDAD_DATOS_VIOLADA(6, "Conflicto de integridad de datos en el sistema"),
 
@@ -97,7 +117,11 @@ public enum ErrorMessage {
     // 99. ERROR INTERNO DEL SERVIDOR (Código: 99)
     // =========================================================================
     ERROR_INTERNO(99, "Ha ocurrido un error inesperado en el servidor"),
-    ERROR_INTERNO_SERVIDOR(99, "Ocurrió un error interno en el servidor al procesar la solicitud");
+    ERROR_INTERNO_SERVIDOR(99, "Ocurrió un error interno en el servidor al procesar la solicitud"),
+    PROVEEDOR_NO_DISPONIBLE(99, "El proveedor de pagos no está disponible. Intente más tarde; no se realizó ningún cargo"),
+    PUNTORED_TIMEOUT(99, "Tiempo de espera agotado al comunicar con el proveedor PuntoRed"),
+    PUNTORED_RESPUESTA_INVALIDA(99, "Respuesta inválida o ilegible del proveedor PuntoRed"),
+    CORREO_NO_ENVIADO(99, "No fue posible enviar el correo electrónico transaccional");
 
     private final int codigo;
     private final String mensaje;

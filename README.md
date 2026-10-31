@@ -87,6 +87,15 @@ Bajo la estricta política de seguridad y consistencia bancaria, los siguientes 
 
 ---
 
+## 💳 Pagos de Servicios y Recargas (Gestopago / PuntoRed)
+
+El flujo completo de pago (autenticación y 2FA, validación contra catálogo, reserva de saldo con bloqueo
+pesimista, integración con `sendTx.do`, idempotencia, verificación con `confirmTx` y conciliación) y la
+justificación de cada decisión de diseño están documentados en
+[`docs/INTEGRACION_GESTOPAGO.md`](docs/INTEGRACION_GESTOPAGO.md).
+
+---
+
 ## 🧪 Ejecución de Pruebas
 
 Para compilar el proyecto y correr la suite de pruebas unitarias y de integración automatizadas (con base de datos H2 en memoria):

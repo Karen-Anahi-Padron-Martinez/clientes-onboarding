@@ -21,6 +21,8 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long>, JpaSpec
 
     Optional<Cliente> findByCuentaNumeroCuenta(String numeroCuenta);
 
+    Optional<Cliente> findByDatosSeguridadUsername(String username);
+
     List<Cliente> findByActivoTrue();
 
     List<Cliente> findByFechaRegistroBetween(LocalDateTime fechaInicio, LocalDateTime fechaFin);

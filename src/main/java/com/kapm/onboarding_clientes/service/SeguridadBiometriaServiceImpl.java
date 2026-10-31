@@ -139,6 +139,7 @@ public class SeguridadBiometriaServiceImpl implements SeguridadBiometriaService 
                 .orElseThrow(() -> new RecursoNoEncontradoException(ErrorMessage.AUTH_USUARIO_NO_ENCONTRADO, username));
 
         seguridad.setLoggeado(false);
+        seguridad.setSesionId(null);
         seguridadRepository.save(seguridad);
     }
 }

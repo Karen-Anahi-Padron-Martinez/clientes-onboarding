@@ -35,6 +35,13 @@ public class DatosSeguridadBiometria {
     @Column(name = "loggeado", nullable = false)
     private Boolean loggeado;
 
+    /**
+     * Identificador de la sesión vigente (claim 'jti' del JWT). Un nuevo login lo reemplaza y el logout lo borra,
+     * con lo que cualquier token anterior deja de ser válido aunque no haya expirado.
+     */
+    @Column(name = "sesion_id", columnDefinition = "TEXT")
+    private String sesionId;
+
     @Column(name = "ultima_actividad")
     private LocalDateTime ultimaActividad;
 

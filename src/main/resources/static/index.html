@@ -1303,7 +1303,7 @@
                         <div>
                             <h4><i class="fa-solid fa-circle-check"></i> ${json.datos.mensaje}</h4>
                             <p><strong>Usuario:</strong> ${json.datos.username} | <strong>Titular:</strong> ${json.datos.clienteNombreCompleto}</p>
-                            <p><strong>Número de Cuenta:</strong> ${json.datos.numeroCuenta} | <strong>Token de Sesión Cifrado:</strong> <code>${json.datos.tokenSimulado}</code></p>
+                            <p><strong>Número de Cuenta:</strong> ${json.datos.numeroCuenta} | <strong>Token de Sesión (JWT):</strong> <code style="word-break:break-all">${json.datos.accessToken}</code></p>
                         </div>
                     `;
                 } else {

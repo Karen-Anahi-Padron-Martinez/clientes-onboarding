@@ -25,8 +25,9 @@ public class OpenApiConfig {
                         .addSecuritySchemes("basicAuth", new SecurityScheme()
                                 .type(SecurityScheme.Type.HTTP).scheme("basic")
                                 .description("Usuario ADMIN definido por ADMIN_USER / ADMIN_PASSWORD")))
+                // URL relativa: Swagger UI llama al mismo origen desde el que se abrió (localhost o Render, con su HTTPS)
                 .servers(List.of(
-                        new Server().url("http://localhost:8081").description("Servidor Local de Desarrollo (Puerto 8081)")
+                        new Server().url("/").description("Servidor actual")
                 ))
                 .info(new Info()
                         .title("Sistema de Onboarding de Clientes | Banca Digital API")

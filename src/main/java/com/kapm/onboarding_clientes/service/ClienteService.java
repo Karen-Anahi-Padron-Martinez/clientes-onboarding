@@ -76,4 +76,11 @@ public interface ClienteService {
     CuentaResponse obtenerCuentaPorRfc(String rfc);
 
     LoginResponse autenticarCliente(LoginRequest request);
+
+    /**
+     * CURP del cliente dueño del usuario autenticado.
+     *
+     * @throws com.kapm.onboarding_clientes.exception.AccesoDenegadoException si el usuario no tiene cliente asociado
+     */
+    String obtenerCurpPorUsername(String username);
 }

@@ -59,7 +59,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<GenericResponse> manejarHttpMessageNotReadable(
             HttpMessageNotReadableException ex, HttpServletRequest request) {
 
-        log.warn("Cuerpo de solicitud mal formado o con propiedades no permitidas en ruta {}: {}", request.getRequestURI(), ex.getMessage());
+        // Sin ex.getMessage(): Jackson puede incluir fragmentos del cuerpo (datos del cliente) en el mensaje
+        log.warn("Cuerpo de solicitud mal formado o con propiedades no permitidas en ruta {}: {}", request.getRequestURI(),
+                ex.getMostSpecificCause().getClass().getSimpleName());
 
         ErrorMessage em = ErrorMessage.JSON_MALFORMADO;
         Throwable cause = ex.getCause();
@@ -144,14 +146,74 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(PuntoRedIntegracionException.class)
+    public ResponseEntity<GenericResponse> manejarPuntoRedIntegracion(
+            PuntoRedIntegracionException ex, HttpServletRequest request) {
+
+        // El detalle técnico (URL, causa, texto del proveedor) solo va al log; al cliente se le responde un mensaje de catálogo
+        log.warn("Excepción de integración PuntoRed en ruta {}: [{}] {}", request.getRequestURI(), ex.getCodigo(), ex.getMessage());
+
+        ErrorMessage em;
+        HttpStatus status;
+        if (ex instanceof PuntoRedAutenticacionException) {
+            em = ErrorMessage.PUNTORED_ERROR_AUTENTICACION;
+            status = HttpStatus.BAD_GATEWAY;
+        } else if (ex instanceof PuntoRedRechazoException) {
+            em = ErrorMessage.PUNTORED_TRANSACCION_RECHAZADA;
+            status = HttpStatus.UNPROCESSABLE_ENTITY;
+        } else if (ex instanceof PuntoRedTimeoutException) {
+            em = ErrorMessage.PUNTORED_TIMEOUT;
+            status = HttpStatus.GATEWAY_TIMEOUT;
+        } else {
+            em = ErrorMessage.ERROR_INTERNO;
+            status = HttpStatus.BAD_GATEWAY;
+        }
+        GenericResponse response = new GenericResponse(em.getCodigo(), em.getMensaje());
+        return new ResponseEntity<>(response, status);
+    }
+
+    @ExceptionHandler(ProveedorNoDisponibleException.class)
+    public ResponseEntity<GenericResponse> manejarProveedorNoDisponible(
+            ProveedorNoDisponibleException ex, HttpServletRequest request) {
+
+        log.error("Proveedor de pagos no disponible en ruta {} (sin cargo al cliente): {}",
+                request.getRequestURI(), ex.getCause() != null ? ex.getCause().getClass().getSimpleName() : "N/A");
+
+        GenericResponse response = new GenericResponse(ex.getCodigo(), ex.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    @ExceptionHandler(CorreoNoEnviadoException.class)
+    public ResponseEntity<GenericResponse> manejarCorreoNoEnviado(
+            CorreoNoEnviadoException ex, HttpServletRequest request) {
+
+        log.error("Fallo al enviar correo transaccional en ruta {}: [{}] {}", request.getRequestURI(), ex.getCodigo(), ex.getMessage());
+
+        // El detalle (API key inválida, HTTP de Brevo, timeout) solo va al log; al cliente, mensaje de catálogo
+        GenericResponse response = new GenericResponse(ex.getCodigo(), ErrorMessage.CORREO_NO_ENVIADO.getMensaje());
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
     // =========================================================================
     // 6. CONFLICTO DE INTEGRIDAD DE DATOS (409) - DataIntegrityViolationException
     // =========================================================================
+    @ExceptionHandler(AccesoDenegadoException.class)
+    public ResponseEntity<GenericResponse> manejarAccesoDenegado(
+            AccesoDenegadoException ex, HttpServletRequest request) {
+
+        log.warn("Acceso denegado a recurso ajeno en ruta {}", request.getRequestURI());
+
+        GenericResponse response = new GenericResponse(ex.getCodigo(), ex.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<GenericResponse> manejarDataIntegrityViolation(
             DataIntegrityViolationException ex, HttpServletRequest request) {
 
-        log.warn("Violación de integridad de datos en BD al procesar ruta {}: {}", request.getRequestURI(), ex.getMessage());
+        // Sin ex.getMessage(): el detalle del motor incluye el SQL y los valores en conflicto (CURP, RFC, correo)
+        log.warn("Violación de integridad de datos en BD al procesar ruta {}: {}", request.getRequestURI(),
+                ex.getMostSpecificCause().getClass().getSimpleName());
 
         GenericResponse response = new GenericResponse(
                 ErrorMessage.CONFLICTO_INTEGRIDAD.getCodigo(),
@@ -245,9 +307,10 @@ public class GlobalExceptionHandler {
 
         log.warn("Argumento inválido en ruta {}: {}", request.getRequestURI(), ex.getMessage());
 
+        // El mensaje de una IllegalArgumentException es técnico (puede venir de librerías): nunca se devuelve al cliente
         GenericResponse response = new GenericResponse(
                 ErrorMessage.DATOS_INVALIDOS.getCodigo(),
-                ex.getMessage() != null && !ex.getMessage().isBlank() ? ex.getMessage() : ErrorMessage.DATOS_INVALIDOS.getMensaje()
+                ErrorMessage.DATOS_INVALIDOS.getMensaje()
         );
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }

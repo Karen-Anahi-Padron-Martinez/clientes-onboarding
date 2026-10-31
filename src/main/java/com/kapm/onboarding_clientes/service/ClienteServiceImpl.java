@@ -39,6 +39,7 @@ public class ClienteServiceImpl implements ClienteService {
     private final CatalogoService catalogoService;
     private final ClienteMapper clienteMapper;
     private final long inactividadLimiteSegundos;
+    private final TokenService tokenService;
 
     public ClienteServiceImpl(
             ClienteRepository clienteRepository,
@@ -47,7 +48,9 @@ public class ClienteServiceImpl implements ClienteService {
             DatosSeguridadBiometriaRepository seguridadRepository,
             CatalogoService catalogoService,
             ClienteMapper clienteMapper,
+            TokenService tokenService,
             @Value("${app.seguridad.inactividad-segundos:5}") long inactividadLimiteSegundos) {
+        this.tokenService = tokenService;
         this.clienteRepository = clienteRepository;
         this.cuentaService = cuentaService;
         this.seguridadBiometriaService = seguridadBiometriaService;
@@ -645,15 +648,21 @@ public class ClienteServiceImpl implements ClienteService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public String obtenerCurpPorUsername(String username) {
+        return clienteRepository.findByDatosSeguridadUsername(username)
+                .map(Cliente::getCurp)
+                .orElseThrow(AccesoDenegadoException::new);
+    }
+
+    @Override
     @Transactional
     public LoginResponse autenticarCliente(LoginRequest request) {
+        // Usuario inexistente y credencial incorrecta responden igual: no se revela qué usernames existen
         DatosSeguridadBiometria seguridad = seguridadRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RecursoNoEncontradoException(ErrorMessage.AUTH_USUARIO_NO_ENCONTRADO, request.getUsername()));
+                .orElseThrow(() -> new ReglaNegocioException(ErrorMessage.AUTH_CREDENCIALES_INVALIDAS));
 
-        Cliente cliente = clienteRepository.findAll().stream()
-                .filter(c -> c.getDatosSeguridad() != null && c.getDatosSeguridad().getId().equals(seguridad.getId()))
-                .findFirst()
-                .orElse(null);
+        Cliente cliente = clienteRepository.findByDatosSeguridadUsername(seguridad.getUsername()).orElse(null);
 
         if (cliente != null && !cliente.getActivo()) {
             seguridad.setLoggeado(false);
@@ -675,13 +684,19 @@ public class ClienteServiceImpl implements ClienteService {
 
         if (!autenticado) {
             seguridad.setLoggeado(false);
+            seguridad.setSesionId(null);
             seguridadRepository.save(seguridad);
             throw new ReglaNegocioException(ErrorMessage.AUTH_CREDENCIALES_INVALIDAS);
         }
 
+        // Nueva sesión: cualquier token emitido antes deja de ser válido
+        String sesionId = UUID.randomUUID().toString();
         seguridad.setLoggeado(true);
+        seguridad.setSesionId(sesionId);
         seguridad.setUltimaActividad(LocalDateTime.now());
         seguridadRepository.save(seguridad);
+
+        TokenService.TokenEmitido token = tokenService.emitir(seguridad.getUsername(), sesionId);
 
         String nombreCompleto = cliente != null ? cliente.getNombre() + " " + cliente.getApellidoPaterno() : "Usuario Sistema";
         String numeroCuenta = cliente != null && cliente.getCuenta() != null ? cliente.getCuenta().getNumeroCuenta() : "N/A";
@@ -695,7 +710,9 @@ public class ClienteServiceImpl implements ClienteService {
                 .clienteNombreCompleto(nombreCompleto)
                 .numeroCuenta(numeroCuenta)
                 .tipoBiometriaValidada(seguridad.getTipoBiometria())
-                .tokenSimulado("SEC-TOKEN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                .accessToken(token.valor())
+                .tokenType("Bearer")
+                .expiraEn(token.expiraEn())
                 .segundosDesdeUltimaActividad(0L)
                 .estadoSesion("ACTIVA (Límite Inactividad: " + inactividadLimiteSegundos + " Segundos)")
                 .timestamp(LocalDateTime.now())

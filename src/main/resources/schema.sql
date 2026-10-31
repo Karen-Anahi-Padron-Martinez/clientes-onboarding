@@ -159,3 +159,81 @@ CREATE INDEX idx_clientes_estado_civil ON clientes(estado_civil_id);
 CREATE INDEX idx_clientes_ocupacion ON clientes(ocupacion_id);
 CREATE INDEX idx_domicilios_estado ON domicilios(estado_id);
 CREATE INDEX idx_domicilios_pais ON domicilios(pais_id);
+
+-- 6. TABLA CATALOGO_PRODUCTOS_PUNTORED
+CREATE TABLE IF NOT EXISTS catalogo_productos_puntored (
+    id BIGSERIAL PRIMARY KEY,
+    id_producto INT NOT NULL UNIQUE,
+    id_servicio INT NOT NULL,
+    nombre_producto TEXT NOT NULL,
+    nombre_servicio TEXT NOT NULL,
+    id_cat_tipo_servicio INT,
+    tipo_front INT NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cat_prod_pr_id_prod ON catalogo_productos_puntored(id_producto);
+
+-- 7. TABLA PAGOS_SERVICIOS (Aislamiento de identificadores internos bancarios vs PuntoRed)
+CREATE TABLE IF NOT EXISTS pagos_servicios (
+    id BIGSERIAL PRIMARY KEY,
+    upc TEXT NOT NULL UNIQUE,
+    idempotency_key TEXT UNIQUE,
+    curp TEXT,
+    rfc TEXT,
+    numero_cuenta TEXT,
+    id_user TEXT,
+    id_producto INT NOT NULL,
+    id_servicio INT NOT NULL,
+    telefono TEXT NOT NULL,
+    referencia TEXT,
+    monto DECIMAL(15, 2) NOT NULL,
+    comision DECIMAL(15, 2),
+    hora_local TEXT NOT NULL,
+    unidad TEXT NOT NULL,
+    estatus TEXT NOT NULL DEFAULT 'PENDIENTE',
+    id_tx_proveedor TEXT,
+    num_autorizacion TEXT,
+    codigo_respuesta TEXT,
+    texto_respuesta TEXT,
+    intentos_verificacion INT DEFAULT 0,
+    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion TIMESTAMP
+);
+ALTER TABLE pagos_servicios ADD COLUMN IF NOT EXISTS intentos_verificacion INT DEFAULT 0;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pagos_servicios_upc ON pagos_servicios(upc);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pagos_servicios_idempotency ON pagos_servicios(idempotency_key);
+CREATE INDEX IF NOT EXISTS idx_pagos_servicios_curp ON pagos_servicios(curp);
+CREATE INDEX IF NOT EXISTS idx_pagos_servicios_cuenta ON pagos_servicios(numero_cuenta);
+CREATE INDEX IF NOT EXISTS idx_pagos_servicios_estatus ON pagos_servicios(estatus);
+
+-- 8. TABLA CODIGOS_VERIFICACION_PAGO (2FA para operaciones de pago)
+CREATE TABLE IF NOT EXISTS codigos_verificacion_pago (
+    id BIGSERIAL PRIMARY KEY,
+    cliente_id BIGINT REFERENCES clientes(id) ON DELETE CASCADE,
+    numero_cuenta TEXT NOT NULL,
+    curp TEXT,
+    hash_codigo TEXT NOT NULL,
+    hash_operacion TEXT NOT NULL,
+    expira_en TIMESTAMP NOT NULL,
+    intentos INT NOT NULL DEFAULT 0,
+    usado BOOLEAN NOT NULL DEFAULT FALSE,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_codigos_verif_cuenta ON codigos_verificacion_pago(numero_cuenta);
+CREATE INDEX IF NOT EXISTS idx_codigos_verif_hash_op ON codigos_verificacion_pago(hash_operacion);
+CREATE INDEX IF NOT EXISTS idx_codigos_verif_creado ON codigos_verificacion_pago(creado_en);
+CREATE INDEX IF NOT EXISTS idx_codigos_verif_usado ON codigos_verificacion_pago(usado);
+
+
+
+-- 9. TABLA CONSULTAS_PROVEEDOR_DIARIAS (cupo diario de getProductList.do: 3 llamadas por día)
+CREATE TABLE IF NOT EXISTS consultas_proveedor_diarias (
+    id BIGSERIAL PRIMARY KEY,
+    operacion TEXT NOT NULL,
+    fecha DATE NOT NULL,
+    consultas INT NOT NULL DEFAULT 0,
+    ultima_exitosa TIMESTAMP,
+    CONSTRAINT uk_consulta_proveedor_operacion_fecha UNIQUE (operacion, fecha)
+);

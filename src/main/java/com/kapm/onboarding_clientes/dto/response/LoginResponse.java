@@ -22,7 +22,10 @@ public class LoginResponse {
     private String clienteNombreCompleto;
     private String numeroCuenta;
     private TipoBiometria tipoBiometriaValidada;
-    private String tokenSimulado;
+    /** JWT de sesión (Bearer). Requerido por /api/pagos/**, /api/auth/estado y /api/auth/logout. */
+    private String accessToken;
+    private String tokenType;
+    private java.time.Instant expiraEn;
     private Long segundosDesdeUltimaActividad;
     private String estadoSesion;
     private LocalDateTime timestamp;

@@ -25,6 +25,8 @@ class RequestValidacionTest {
     void identificadorPresente() {
         verificarIdentificador((c, r) -> ClienteIdentificadorRequest.builder().curp(c).rfc(r).build().isIdentificadorPresente());
         verificarIdentificador((c, r) -> ValidarIdentificadorRequest.builder().curp(c).rfc(r).build().isIdentificadorPresente());
+        assertThat(ValidarIdentificadorRequest.builder().correo("a@b.com").build().isIdentificadorPresente()).isTrue();
+        assertThat(ValidarIdentificadorRequest.builder().username("usuario1").build().isIdentificadorPresente()).isTrue();
         verificarIdentificador((c, r) -> ActualizarContactoRequest.builder().curp(c).rfc(r).build().isIdentificadorPresente());
         verificarIdentificador((c, r) -> ClienteUpdateRequest.builder().curp(c).rfc(r).build().isIdentificadorPresente());
     }

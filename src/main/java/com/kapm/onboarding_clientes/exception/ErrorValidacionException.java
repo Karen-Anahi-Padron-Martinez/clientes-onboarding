@@ -23,6 +23,6 @@ public class ErrorValidacionException extends RuntimeException {
     }
 
     public int getCodigo() {
-        return errorMessage != null ? errorMessage.getCodigo() : ErrorMessage.VALIDACION_FALLIDA.getCodigo();
+        return errorMessage.getCodigo();
     }
 }

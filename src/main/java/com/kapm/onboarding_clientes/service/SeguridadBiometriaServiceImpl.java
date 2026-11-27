@@ -7,6 +7,7 @@ import com.kapm.onboarding_clientes.exception.ErrorMessage;
 import com.kapm.onboarding_clientes.exception.RecursoNoEncontradoException;
 import com.kapm.onboarding_clientes.exception.ReglaNegocioException;
 import com.kapm.onboarding_clientes.repository.DatosSeguridadBiometriaRepository;
+import com.kapm.onboarding_clientes.util.Tiempo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -16,7 +17,6 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 
@@ -24,9 +24,9 @@ import java.util.HexFormat;
 @Service
 public class SeguridadBiometriaServiceImpl implements SeguridadBiometriaService {
 
-    public static final long INACTIVITY_TIMEOUT_SECONDS = 5L;
+    public static final long INACTIVITY_TIMEOUT_SECONDS = 900L;
 
-    @Value("${app.seguridad.inactividad-segundos:5}")
+    @Value("${app.seguridad.inactividad-segundos:900}")
     private long inactividadLimiteSegundos;
 
     private final PasswordEncoder passwordEncoder;
@@ -85,13 +85,14 @@ public class SeguridadBiometriaServiceImpl implements SeguridadBiometriaService 
         }
 
         String passwordHash = encriptarPassword(rawPassword);
-        String hashBiometrico = generarHashBiometrico(rawBiometria);
+        // La biometría es opcional: las apps ya no la capturan en el registro
+        boolean conBiometria = rawBiometria != null && !rawBiometria.isBlank();
 
         return DatosSeguridadBiometria.builder()
                 .username(username)
                 .passwordHash(passwordHash)
-                .tipoBiometria(tipoBiometria != null ? tipoBiometria : TipoBiometria.HUELLA_DACTILAR)
-                .hashBiometrico(hashBiometrico)
+                .tipoBiometria(conBiometria ? (tipoBiometria != null ? tipoBiometria : TipoBiometria.HUELLA_DACTILAR) : null)
+                .hashBiometrico(conBiometria ? generarHashBiometrico(rawBiometria) : null)
                 .build();
     }
 
@@ -105,7 +106,7 @@ public class SeguridadBiometriaServiceImpl implements SeguridadBiometriaService 
         String estado;
 
         if (seguridad.getUltimaActividad() != null) {
-            segundosInactividad = Duration.between(seguridad.getUltimaActividad(), LocalDateTime.now()).getSeconds();
+            segundosInactividad = Tiempo.transcurridoDesde(seguridad.getUltimaActividad()).getSeconds();
             if (Boolean.TRUE.equals(seguridad.getLoggeado()) && segundosInactividad <= inactividadLimiteSegundos) {
                 loggeado = true;
                 estado = "SESIÓN ACTIVA (Última actividad hace " + segundosInactividad + "s)";

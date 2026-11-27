@@ -1,9 +1,13 @@
 package com.kapm.onboarding_clientes.controller;
 
 import com.kapm.onboarding_clientes.dto.request.LoginRequest;
+import com.kapm.onboarding_clientes.dto.request.RestablecerPasswordRequest;
+import com.kapm.onboarding_clientes.dto.request.SolicitarRecuperacionRequest;
+import com.kapm.onboarding_clientes.dto.request.VerificarLoginRequest;
 import com.kapm.onboarding_clientes.dto.response.ApiResponse;
+import com.kapm.onboarding_clientes.dto.response.LoginDesafioResponse;
 import com.kapm.onboarding_clientes.dto.response.LoginResponse;
-import com.kapm.onboarding_clientes.service.ClienteService;
+import com.kapm.onboarding_clientes.service.AccesoClienteService;
 import com.kapm.onboarding_clientes.service.SeguridadBiometriaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -21,14 +25,35 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Autenticación y Biometría", description = "Endpoints para la validación de credenciales cifradas, firmas biométricas y control de sesión con temporizador de inactividad (100% mediante Request Body)")
 public class AuthController {
 
-    private final ClienteService clienteService;
+    private final AccesoClienteService accesoClienteService;
     private final SeguridadBiometriaService seguridadBiometriaService;
 
     @PostMapping("/login")
-    @Operation(summary = "Autenticación segura (Request Body con Password Cifrada o Biometría)", description = "Permite autenticar a un usuario registrado mediante su contraseña cifrada con BCrypt o su patrón biométrico encriptado en SHA-256 en el Request Body. Activa la bandera 'loggeado = true' e inicia el contador de actividad (Límite: 5s).")
-    public ResponseEntity<ApiResponse<LoginResponse>> autenticar(@Valid @RequestBody LoginRequest request) {
-        LoginResponse response = clienteService.autenticarCliente(request);
+    @Operation(summary = "Login paso 1: usuario y contraseña", description = "Valida las credenciales y envía un código de 6 dígitos al correo registrado. No emite token: hay que confirmar el código en /api/auth/login/verificar. Para reenviar el código se vuelve a llamar a este endpoint.")
+    public ResponseEntity<ApiResponse<LoginDesafioResponse>> autenticar(@Valid @RequestBody LoginRequest request) {
+        LoginDesafioResponse response = accesoClienteService.iniciarLogin(request);
         return ResponseEntity.ok(ApiResponse.exito(response.getMensaje(), response));
+    }
+
+    @PostMapping("/login/verificar")
+    @Operation(summary = "Login paso 2: código enviado al correo", description = "Valida el código (un solo uso, 5 minutos, 3 intentos) y emite el JWT de sesión.")
+    public ResponseEntity<ApiResponse<LoginResponse>> verificarLogin(@Valid @RequestBody VerificarLoginRequest request) {
+        LoginResponse response = accesoClienteService.verificarLogin(request);
+        return ResponseEntity.ok(ApiResponse.exito(response.getMensaje(), response));
+    }
+
+    @PostMapping("/recuperar/solicitar")
+    @Operation(summary = "Recuperar contraseña: solicitar código", description = "Envía un código al correo registrado del usuario (por username o correo). Responde igual aunque el usuario no exista.")
+    public ResponseEntity<ApiResponse<Void>> solicitarRecuperacion(@Valid @RequestBody SolicitarRecuperacionRequest request) {
+        accesoClienteService.solicitarRecuperacion(request);
+        return ResponseEntity.ok(ApiResponse.exito("Si los datos corresponden a una cuenta, enviamos un código a su correo registrado", null));
+    }
+
+    @PostMapping("/recuperar/restablecer")
+    @Operation(summary = "Recuperar contraseña: restablecer", description = "Valida el código de recuperación, guarda la nueva contraseña y cierra la sesión abierta.")
+    public ResponseEntity<ApiResponse<Void>> restablecerPassword(@Valid @RequestBody RestablecerPasswordRequest request) {
+        accesoClienteService.restablecerPassword(request);
+        return ResponseEntity.ok(ApiResponse.exito("Contraseña actualizada. Ya puedes iniciar sesión", null));
     }
 
     @PostMapping("/estado")

@@ -21,6 +21,7 @@ import com.kapm.onboarding_clientes.exception.*;
 import com.kapm.onboarding_clientes.repository.CatalogoProductoPuntoRedRepository;
 import com.kapm.onboarding_clientes.repository.PagoServicioRepository;
 import com.kapm.onboarding_clientes.repository.SaldoRepository;
+import com.kapm.onboarding_clientes.util.ReferenciaUtil;
 import com.kapm.onboarding_clientes.validation.CurpRfcUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -284,6 +285,11 @@ public class PagoServicioServiceImpl implements PagoServicioService {
                     codRechazo,
                     txtRechazo
             );
+            // PuntoRed devuelve NUM_AUTORIZACION aun en el rechazo (p. ej. "-1"): se conserva para mostrarlo
+            if (pagoRechazado != null && e.getNumAutorizacion() != null && !e.getNumAutorizacion().isBlank()) {
+                pagoRechazado.setNumAutorizacion(e.getNumAutorizacion().trim());
+                pagoServicioRepository.save(pagoRechazado);
+            }
             return mapearAPagoResponse(pagoRechazado, ErrorMessage.PUNTORED_TRANSACCION_RECHAZADA.getMensaje());
 
         } catch (Exception e) {
@@ -371,19 +377,26 @@ public class PagoServicioServiceImpl implements PagoServicioService {
         String telFinal;
         String refFinal;
 
-        if (tipoFront == 0) {
-            // Recarga TAE: requiere teléfono celular válido (10 dígitos)
+        if (ReferenciaUtil.esRecarga(producto)) {
+            // Recarga TAE o producto cuya referencia es el celular (tipoReferencia "a"): requiere 10 dígitos
             if (telefono == null || !telefono.trim().matches("^\\d{10}$")) {
                 throw new ReglaNegocioException(ErrorMessage.TELEFONO_REQUERIDO_RECARGA);
             }
             telFinal = telefono.trim();
-            refFinal = null;
+            // Con tipoFront 1/2 Gestopago exige referencia: en estos productos la referencia es el mismo celular
+            refFinal = tipoFront == 0 ? null : telFinal;
+            if (!ReferenciaUtil.cumpleRegex(producto, telFinal)) {
+                throw new ReglaNegocioException(ErrorMessage.REFERENCIA_FORMATO_INVALIDO);
+            }
         } else {
             // Pago de servicios: requiere referencia válida de 1 a 100 caracteres
             if (referencia == null || referencia.trim().isEmpty() || referencia.trim().length() > 100) {
                 throw new ReglaNegocioException(ErrorMessage.REFERENCIA_REQUERIDA_SERVICIO);
             }
             refFinal = referencia.trim();
+            if (!ReferenciaUtil.cumpleRegex(producto, refFinal)) {
+                throw new ReglaNegocioException(ErrorMessage.REFERENCIA_FORMATO_INVALIDO);
+            }
             // Teléfono para sendTx: si se provee se valida 10-20 dígitos/chars; si no, se usa el móvil del cliente
             if (telefono != null && !telefono.isBlank()) {
                 if (telefono.trim().length() < 10 || telefono.trim().length() > 20) {
@@ -453,8 +466,12 @@ public class PagoServicioServiceImpl implements PagoServicioService {
         return mapearAPagoResponse(existente, "Resultado de la transacción previa (Idempotente)");
     }
 
+    /** Incluye nombre y logo del producto para que el resultado no muestre solo el idProducto. */
     private PagoResponse mapearAPagoResponse(PagoServicio pago, String mensaje) {
-        return PagoResponse.desde(pago, mensaje);
+        CatalogoProductoPuntoRed producto = pago.getIdProducto() != null
+                ? catalogoProductoRepository.findByIdProducto(pago.getIdProducto()).orElse(null)
+                : null;
+        return PagoResponse.desde(pago, mensaje, producto);
     }
 
     private record DatosOperacionValidada(

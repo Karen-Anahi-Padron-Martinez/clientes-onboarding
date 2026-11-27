@@ -1,5 +1,6 @@
 package com.kapm.onboarding_clientes.dto.request;
 
+import com.kapm.onboarding_clientes.validation.PatronesTexto;
 import com.kapm.onboarding_clientes.validation.ValidationMessages;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -17,25 +18,30 @@ public class DomicilioDTO {
 
     @NotBlank(message = ValidationMessages.DOMICILIO_CALLE_OBLIGATORIO)
     @Size(max = 100, message = ValidationMessages.DOMICILIO_CALLE_SIZE)
+    @Pattern(regexp = PatronesTexto.DOMICILIO, message = PatronesTexto.MENSAJE_DOMICILIO)
     @Schema(description = "Nombre de la calle o avenida", example = "Av. Insurgentes Sur")
     private String calle;
 
     @NotBlank(message = ValidationMessages.DOMICILIO_NUM_EXT_OBLIGATORIO)
     @Size(max = 20, message = ValidationMessages.DOMICILIO_NUM_EXT_SIZE)
+    @Pattern(regexp = PatronesTexto.DOMICILIO, message = PatronesTexto.MENSAJE_DOMICILIO)
     @Schema(description = "Número exterior", example = "456")
     private String numeroExterior;
 
     @Size(max = 20, message = ValidationMessages.DOMICILIO_NUM_INT_SIZE)
+    @Pattern(regexp = PatronesTexto.DOMICILIO_OPCIONAL, message = PatronesTexto.MENSAJE_DOMICILIO)
     @Schema(description = "Número interior, piso o departamento (opcional)", example = "Piso 8-B")
     private String numeroInterior;
 
     @NotBlank(message = ValidationMessages.DOMICILIO_COLONIA_OBLIGATORIO)
     @Size(max = 100, message = ValidationMessages.DOMICILIO_COLONIA_SIZE)
+    @Pattern(regexp = PatronesTexto.DOMICILIO, message = PatronesTexto.MENSAJE_DOMICILIO)
     @Schema(description = "Colonia o asentamiento", example = "Roma Norte")
     private String colonia;
 
     @NotBlank(message = ValidationMessages.DOMICILIO_MUNICIPIO_OBLIGATORIO)
     @Size(max = 100, message = ValidationMessages.DOMICILIO_MUNICIPIO_SIZE)
+    @Pattern(regexp = PatronesTexto.DOMICILIO, message = PatronesTexto.MENSAJE_DOMICILIO)
     @Schema(description = "Municipio o alcaldía", example = "Cuauhtémoc")
     private String municipio;
 

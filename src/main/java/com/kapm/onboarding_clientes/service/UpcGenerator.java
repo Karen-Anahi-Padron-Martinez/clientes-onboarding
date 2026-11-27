@@ -35,11 +35,7 @@ public class UpcGenerator {
             randomPart.append(ALPHABET.charAt(RANDOM.nextInt(ALPHABET.length())));
         }
 
-        String upc = timePart + randomPart;
-        if (upc.length() > 15) {
-            upc = upc.substring(upc.length() - 15);
-        }
-        return upc;
+        return timePart + randomPart;
     }
 
     /**

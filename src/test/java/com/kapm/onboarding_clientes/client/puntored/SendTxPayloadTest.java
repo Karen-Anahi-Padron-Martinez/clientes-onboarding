@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Pruebas Unitarias - SendTxPayload (Estructura y Validación)")
@@ -96,7 +97,7 @@ class SendTxPayloadTest {
                 .tipoFront(0)
                 .build();
 
-        payload.validar();
+        assertThatCode(payload::validar).doesNotThrowAnyException();
     }
 
     @Test

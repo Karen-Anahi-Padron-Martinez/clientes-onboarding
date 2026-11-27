@@ -14,8 +14,10 @@ import org.springframework.security.oauth2.jwt.Jwt;
 @RequiredArgsConstructor
 public class SesionVigenteValidator implements OAuth2TokenValidator<Jwt> {
 
-    private static final OAuth2Error SESION_INVALIDA =
-            new OAuth2Error("invalid_token", "La sesión no está vigente", null);
+    // Sin acentos: RFC 6750 solo admite ASCII en error_description; con caracteres fuera de rango Spring
+    // lo sustituye por un genérico "Invalid token" y el cliente pierde la causa real del rechazo
+    private static final OAuth2Error SESION_INVALIDA = new OAuth2Error("invalid_token",
+            "Sesion no vigente: expiro por inactividad, se cerro con logout o se inicio una sesion mas reciente", null);
 
     private final DatosSeguridadBiometriaRepository seguridadRepository;
 

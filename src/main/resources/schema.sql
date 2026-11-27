@@ -96,8 +96,8 @@ CREATE TABLE datos_seguridad_biometria (
     id BIGSERIAL PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    tipo_biometria TEXT NOT NULL DEFAULT 'HUELLA_DACTILAR',
-    hash_biometrico TEXT NOT NULL,
+    tipo_biometria TEXT,
+    hash_biometrico TEXT,
     loggeado BOOLEAN NOT NULL DEFAULT FALSE,
     ultima_actividad TIMESTAMP,
     fecha_registro_biometrico TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -121,7 +121,7 @@ CREATE TABLE clientes (
     telefono_movil TEXT NOT NULL,
     telefono_alternativo TEXT,
     ocupacion_id BIGINT NOT NULL,
-    empresa TEXT NOT NULL,
+    empresa TEXT,
     ingreso_mensual DECIMAL(15, 2) NOT NULL,
     activo BOOLEAN NOT NULL DEFAULT TRUE,
     fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -237,3 +237,19 @@ CREATE TABLE IF NOT EXISTS consultas_proveedor_diarias (
     ultima_exitosa TIMESTAMP,
     CONSTRAINT uk_consulta_proveedor_operacion_fecha UNIQUE (operacion, fecha)
 );
+
+-- 10. TABLA CODIGOS_ACCESO (segundo factor del login y recuperación de contraseña)
+CREATE TABLE IF NOT EXISTS codigos_acceso (
+    id BIGSERIAL PRIMARY KEY,
+    username TEXT NOT NULL,
+    proposito TEXT NOT NULL,
+    hash_codigo TEXT NOT NULL,
+    expira_en TIMESTAMP NOT NULL,
+    intentos INT NOT NULL DEFAULT 0,
+    usado BOOLEAN NOT NULL DEFAULT FALSE,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_codigos_acceso_proposito CHECK (proposito IN ('LOGIN', 'RECUPERAR_PASSWORD'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_codigos_acceso_username ON codigos_acceso(username);
+CREATE INDEX IF NOT EXISTS idx_codigos_acceso_creado ON codigos_acceso(creado_en);

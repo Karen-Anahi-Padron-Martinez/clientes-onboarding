@@ -32,4 +32,9 @@ public interface CatalogoProductoPuntoRedRepository extends JpaRepository<Catalo
      * Verifica la existencia de un producto en el catálogo local.
      */
     boolean existsByIdProducto(Integer idProducto);
+
+    /**
+     * Productos por identificador oficial (enriquecimiento del historial de pagos).
+     */
+    List<CatalogoProductoPuntoRed> findByIdProductoIn(java.util.Collection<Integer> idsProducto);
 }

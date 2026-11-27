@@ -23,6 +23,6 @@ public class RecursoDuplicadoException extends RuntimeException {
     }
 
     public int getCodigo() {
-        return errorMessage != null ? errorMessage.getCodigo() : ErrorMessage.RECURSO_DUPLICADO.getCodigo();
+        return errorMessage.getCodigo();
     }
 }

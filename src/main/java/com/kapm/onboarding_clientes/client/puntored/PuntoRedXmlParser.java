@@ -3,14 +3,15 @@ package com.kapm.onboarding_clientes.client.puntored;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.kapm.onboarding_clientes.client.puntored.model.PuntoRedMensaje;
-import com.kapm.onboarding_clientes.client.puntored.model.PuntoRedProducto;
 import com.kapm.onboarding_clientes.client.puntored.model.PuntoRedProductosResponse;
 import com.kapm.onboarding_clientes.client.puntored.model.PuntoRedTxResponse;
 import com.kapm.onboarding_clientes.exception.PuntoRedRespuestaInvalidaException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Parser XML especializado exclusivamente para procesar las respuestas XML recibidas
@@ -38,43 +39,23 @@ public class PuntoRedXmlParser {
     public PuntoRedProductosResponse parseProductos(String xml) {
         validarXmlNoVacio(xml, "getProductList");
 
-        String trimmed = xml.trim();
-        if (trimmed.startsWith("<MENSAJE") || trimmed.startsWith("<?xml") && trimmed.contains("<MENSAJE") && !trimmed.contains("<PRODUCTO")) {
-            try {
-                PuntoRedMensaje mensaje = xmlMapper.readValue(xml, PuntoRedMensaje.class);
-                if (mensaje != null && mensaje.getCodigo() != null) {
-                    return PuntoRedProductosResponse.builder()
-                            .mensaje(mensaje)
-                            .productos(List.of())
-                            .build();
-                }
-            } catch (Exception e) {
-                log.debug("Intento inicial como nodo raíz MENSAJE falló: {}", e.getMessage());
+        if (esRaizMensaje(xml.trim(), "<PRODUCTO")) {
+            Optional<PuntoRedMensaje> mensaje = leerMensaje(xml);
+            if (mensaje.isPresent()) {
+                return productosConMensaje(mensaje.get());
             }
         }
 
-        try {
-            PuntoRedProductosResponse response = xmlMapper.readValue(xml, PuntoRedProductosResponse.class);
-            if (response != null && (response.getMensaje() != null || (response.getProductos() != null && !response.getProductos().isEmpty()))) {
-                return response;
-            }
-        } catch (Exception e) {
-            log.debug("No se pudo deserializar como PRODUCTOS, intentando como MENSAJE de error: {}", e.getMessage());
+        Optional<PuntoRedProductosResponse> response = leer(xml, PuntoRedProductosResponse.class)
+                .filter(r -> r.getMensaje() != null || !CollectionUtils.isEmpty(r.getProductos()));
+        if (response.isPresent()) {
+            return response.get();
         }
 
-        try {
-            PuntoRedMensaje mensaje = xmlMapper.readValue(xml, PuntoRedMensaje.class);
-            if (mensaje != null && mensaje.getCodigo() != null) {
-                return PuntoRedProductosResponse.builder()
-                        .mensaje(mensaje)
-                        .productos(List.of())
-                        .build();
-            }
-        } catch (Exception ex) {
-            log.debug("Fallo al intentar deserializar como MENSAJE: {}", ex.getMessage());
-        }
-
-        throw new PuntoRedRespuestaInvalidaException("La respuesta XML de productos es inesperada o no tiene un formato válido");
+        return leerMensaje(xml)
+                .map(this::productosConMensaje)
+                .orElseThrow(() -> new PuntoRedRespuestaInvalidaException(
+                        "La respuesta XML de productos es inesperada o no tiene un formato válido"));
     }
 
     /**
@@ -87,41 +68,24 @@ public class PuntoRedXmlParser {
     public PuntoRedTxResponse parseSendTx(String xml) {
         validarXmlNoVacio(xml, "sendTx");
 
-        String trimmed = xml.trim();
-        if (trimmed.startsWith("<MENSAJE") || trimmed.startsWith("<?xml") && trimmed.contains("<MENSAJE") && !trimmed.contains("<ID_TX")) {
-            try {
-                PuntoRedMensaje mensaje = xmlMapper.readValue(xml, PuntoRedMensaje.class);
-                if (mensaje != null && mensaje.getCodigo() != null) {
-                    return PuntoRedTxResponse.builder()
-                            .mensaje(mensaje)
-                            .build();
-                }
-            } catch (Exception e) {
-                log.debug("Intento de sendTx como nodo raíz MENSAJE falló: {}", e.getMessage());
+        // Con raíz MENSAJE se lee primero como mensaje: en confirmTx el ID_TX viaja dentro de ese bloque
+        if (esRaizMensaje(xml.trim(), "<ID_TX")) {
+            Optional<PuntoRedMensaje> mensaje = leerMensaje(xml);
+            if (mensaje.isPresent()) {
+                return txConMensaje(mensaje.get());
             }
         }
 
-        try {
-            PuntoRedTxResponse txResponse = xmlMapper.readValue(xml, PuntoRedTxResponse.class);
-            if (txResponse != null && (txResponse.getIdTx() != null || txResponse.getMensaje() != null || txResponse.getNumAutorizacion() != null)) {
-                return txResponse;
-            }
-        } catch (Exception e) {
-            log.debug("No se pudo deserializar directamente a PuntoRedTxResponse: {}", e.getMessage());
+        Optional<PuntoRedTxResponse> txResponse = leer(xml, PuntoRedTxResponse.class)
+                .filter(tx -> tx.getIdTx() != null || tx.getMensaje() != null || tx.getNumAutorizacion() != null);
+        if (txResponse.isPresent()) {
+            return txResponse.get();
         }
 
-        try {
-            PuntoRedMensaje mensaje = xmlMapper.readValue(xml, PuntoRedMensaje.class);
-            if (mensaje != null && mensaje.getCodigo() != null) {
-                return PuntoRedTxResponse.builder()
-                        .mensaje(mensaje)
-                        .build();
-            }
-        } catch (Exception ex) {
-            log.debug("Fallo al intentar interpretar respuesta de sendTx como MENSAJE: {}", ex.getMessage());
-        }
-
-        throw new PuntoRedRespuestaInvalidaException("La respuesta XML de transacción sendTx es inválida, inesperada o no contiene campos reconocibles");
+        return leerMensaje(xml)
+                .map(this::txConMensaje)
+                .orElseThrow(() -> new PuntoRedRespuestaInvalidaException(
+                        "La respuesta XML de transacción sendTx es inválida, inesperada o no contiene campos reconocibles"));
     }
 
     /**
@@ -134,6 +98,33 @@ public class PuntoRedXmlParser {
         } catch (Exception e) {
             throw new PuntoRedRespuestaInvalidaException("No se pudo parsear el bloque MENSAJE del XML de PuntoRed", e);
         }
+    }
+
+    /** La raíz es MENSAJE, o un documento con declaración XML que trae MENSAJE pero no el nodo propio de la operación. */
+    private static boolean esRaizMensaje(String xml, String nodoOperacion) {
+        return xml.startsWith("<MENSAJE")
+                || (xml.startsWith("<?xml") && xml.contains("<MENSAJE") && !xml.contains(nodoOperacion));
+    }
+
+    private Optional<PuntoRedMensaje> leerMensaje(String xml) {
+        return leer(xml, PuntoRedMensaje.class).filter(m -> m.getCodigo() != null);
+    }
+
+    private <T> Optional<T> leer(String xml, Class<T> tipo) {
+        try {
+            return Optional.ofNullable(xmlMapper.readValue(xml, tipo));
+        } catch (Exception e) {
+            log.debug("No se pudo deserializar la respuesta como {}: {}", tipo.getSimpleName(), e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    private PuntoRedProductosResponse productosConMensaje(PuntoRedMensaje mensaje) {
+        return PuntoRedProductosResponse.builder().mensaje(mensaje).productos(List.of()).build();
+    }
+
+    private PuntoRedTxResponse txConMensaje(PuntoRedMensaje mensaje) {
+        return PuntoRedTxResponse.builder().mensaje(mensaje).build();
     }
 
     private void validarXmlNoVacio(String xml, String operacion) {

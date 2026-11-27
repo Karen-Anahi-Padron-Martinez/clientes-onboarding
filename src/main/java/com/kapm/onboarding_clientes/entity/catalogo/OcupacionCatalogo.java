@@ -20,15 +20,4 @@ public enum OcupacionCatalogo {
 
     private final String codigo;
     private final String descripcion;
-
-    public static boolean esValido(String valor) {
-        if (valor == null || valor.isBlank()) return false;
-        String v = valor.trim().toUpperCase();
-        for (OcupacionCatalogo o : values()) {
-            if (o.name().equalsIgnoreCase(v) || o.codigo.equalsIgnoreCase(v) || o.descripcion.equalsIgnoreCase(valor.trim())) {
-                return true;
-            }
-        }
-        return false;
-    }
 }

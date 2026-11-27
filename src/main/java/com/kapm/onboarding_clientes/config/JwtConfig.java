@@ -30,6 +30,7 @@ public class JwtConfig {
     public static final String ISSUER = "onboarding-clientes";
     public static final String CLAIM_ROLES = "roles";
     private static final int LONGITUD_MINIMA_BYTES = 32;
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     @Bean
     public SecretKey jwtSecretKey(@Value("${app.security.jwt.secret:}") String secretBase64) {
@@ -38,7 +39,7 @@ public class JwtConfig {
             // Fallback solo para desarrollo: llave efímera, los tokens dejan de valer al reiniciar
             log.warn("JWT_SECRET no configurado: se generó una llave efímera. Configure JWT_SECRET en cualquier entorno compartido.");
             bytes = new byte[LONGITUD_MINIMA_BYTES];
-            new SecureRandom().nextBytes(bytes);
+            RANDOM.nextBytes(bytes);
         } else {
             bytes = Base64.getDecoder().decode(secretBase64.trim());
             if (bytes.length < LONGITUD_MINIMA_BYTES) {

@@ -47,3 +47,5 @@ out/
 
 ### VS Code ###
 .vscode/
+
+.sonar/

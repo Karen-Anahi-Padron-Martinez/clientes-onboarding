@@ -285,7 +285,7 @@ public class PuntoRedClient {
             throw new PuntoRedRespuestaInvalidaException("La respuesta de sendTx no contiene CODIGO (UPC: " + upc + ")");
         }
         log.warn("Transacción RECHAZADA por PuntoRed [upc: {}, codigo: {}, texto: {}]", upc, codigo, texto);
-        throw new PuntoRedRechazoException(codigo, texto);
+        throw PuntoRedRechazoException.conAutorizacion(codigo, texto, txResponse.getNumAutorizacion());
     }
 
     /**
@@ -384,9 +384,6 @@ public class PuntoRedClient {
     }
 
     private Instant extraerExpiracionJwt(String token) {
-        if (token == null) {
-            return null;
-        }
         String[] partes = token.split("\\.");
         if (partes.length < 2) {
             return null;
@@ -408,11 +405,9 @@ public class PuntoRedClient {
         T apply(String token);
     }
 
+    /** Solo se construye con un token ya validado como no vacío. */
     private record TokenInfo(String token, Instant expiresAt) {
         public boolean isValid() {
-            if (token == null || token.isBlank()) {
-                return false;
-            }
             if (expiresAt == null) {
                 return true; // No tiene expiración fija, se invalidará ante 401/403
             }

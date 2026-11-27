@@ -27,8 +27,8 @@ import java.util.List;
 /**
  * Matriz de acceso:
  * <ul>
- *   <li>Público: onboarding (registro y prevalidación), login, catálogos, documentación y frontend estático.</li>
- *   <li>CLIENTE (JWT Bearer emitido en /api/auth/login): pagos y gestión de su propia sesión.</li>
+ *   <li>Público: onboarding (registro y prevalidación), login en dos pasos, recuperación de contraseña, catálogos, documentación y frontend estático.</li>
+ *   <li>CLIENTE (JWT Bearer emitido en /api/auth/login/verificar): pagos, perfil, saldo y gestión de su propia sesión.</li>
  *   <li>ADMIN (HTTP Basic, credenciales por variables de entorno): administración de clientes, cuentas y conciliación.</li>
  * </ul>
  * Todo lo no listado queda denegado por defecto.
@@ -72,10 +72,11 @@ public class SecurityConfig {
                 // Público
                 .requestMatchers("/", "/index.html", "/static/**", "/css/**", "/js/**", "/favicon.ico").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/clientes", "/api/clientes/validar", "/api/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/clientes", "/api/clientes/validar", "/api/auth/login",
+                        "/api/auth/login/verificar", "/api/auth/recuperar/solicitar", "/api/auth/recuperar/restablecer").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/catalogos/**").permitAll()
                 // Cliente autenticado con JWT
-                .requestMatchers("/api/pagos/**", "/api/auth/estado", "/api/auth/logout").hasRole("CLIENTE")
+                .requestMatchers("/api/pagos/**", "/api/perfil", "/api/perfil/**", "/api/auth/estado", "/api/auth/logout").hasRole("CLIENTE")
                 // Administración
                 .requestMatchers("/api/admin/**", "/api/clientes/**", "/api/cuentas/**").hasRole("ADMIN")
                 .anyRequest().denyAll()

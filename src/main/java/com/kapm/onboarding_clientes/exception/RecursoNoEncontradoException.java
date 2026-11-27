@@ -23,6 +23,6 @@ public class RecursoNoEncontradoException extends RuntimeException {
     }
 
     public int getCodigo() {
-        return errorMessage != null ? errorMessage.getCodigo() : ErrorMessage.RECURSO_NO_ENCONTRADO.getCodigo();
+        return errorMessage.getCodigo();
     }
 }

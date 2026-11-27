@@ -8,11 +8,11 @@ import com.kapm.onboarding_clientes.dto.response.SaldoResponse;
 import com.kapm.onboarding_clientes.entity.*;
 import com.kapm.onboarding_clientes.repository.DatosSeguridadBiometriaRepository;
 import com.kapm.onboarding_clientes.service.SeguridadBiometriaServiceImpl;
+import com.kapm.onboarding_clientes.util.Tiempo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.math.RoundingMode;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
@@ -30,7 +30,7 @@ public class ClienteMapper {
 
     public ClienteMapper(
             DatosSeguridadBiometriaRepository seguridadRepository,
-            @Value("${app.seguridad.inactividad-segundos:5}") long inactividadLimiteSegundos) {
+            @Value("${app.seguridad.inactividad-segundos:900}") long inactividadLimiteSegundos) {
         this.seguridadRepository = seguridadRepository;
         this.inactividadLimiteSegundos = inactividadLimiteSegundos > 0 
                 ? inactividadLimiteSegundos 
@@ -64,7 +64,7 @@ public class ClienteMapper {
             biometriaRegistrada = (seguridad.getHashBiometrico() != null && !seguridad.getHashBiometrico().isBlank());
 
             if (seguridad.getUltimaActividad() != null) {
-                segundosInactividad = Duration.between(seguridad.getUltimaActividad(), LocalDateTime.now()).getSeconds();
+                segundosInactividad = Tiempo.transcurridoDesde(seguridad.getUltimaActividad()).getSeconds();
 
                 if (Boolean.TRUE.equals(seguridad.getLoggeado()) && segundosInactividad <= inactividadLimiteSegundos) {
                     loggeado = true;
@@ -184,7 +184,7 @@ public class ClienteMapper {
         if (clienteOpt.isPresent() && clienteOpt.get().getDatosSeguridad() != null) {
             DatosSeguridadBiometria seguridad = clienteOpt.get().getDatosSeguridad();
             if (seguridad.getUltimaActividad() != null) {
-                segundosInactividad = Duration.between(seguridad.getUltimaActividad(), LocalDateTime.now()).getSeconds();
+                segundosInactividad = Tiempo.transcurridoDesde(seguridad.getUltimaActividad()).getSeconds();
                 if (Boolean.TRUE.equals(seguridad.getLoggeado()) && segundosInactividad <= inactividadLimiteSegundos) {
                     loggeado = true;
                     seguridad.setUltimaActividad(LocalDateTime.now());
@@ -215,10 +215,7 @@ public class ClienteMapper {
                 .build();
     }
 
-    private String construirNombreCompleto(Cliente cliente) {
-        if (cliente == null) {
-            return "";
-        }
+    public String construirNombreCompleto(Cliente cliente) {
         return cliente.getNombre() +
                 (cliente.getSegundoNombre() != null && !cliente.getSegundoNombre().isBlank() ? " " + cliente.getSegundoNombre() : "") +
                 " " + cliente.getApellidoPaterno() + " " + cliente.getApellidoMaterno();

@@ -34,8 +34,11 @@ public enum ErrorMessage {
     CLIENTE_NO_ENCONTRADO_BUSQUEDA(3, "No se encontraron clientes que coincidan con los criterios de búsqueda especificados"),
     CLIENTE_SIN_CUENTA(3, "El cliente no tiene una cuenta bancaria asociada"),
     CUENTA_NO_ENCONTRADA(3, "No se encontró la cuenta bancaria especificada"),
+    PAGO_NO_ENCONTRADO(3, "No se encontró la operación solicitada"),
     CUENTA_NO_ASOCIADA_CLIENTE(3, "La cuenta no se encuentra asociada a ningún cliente"),
     AUTH_USUARIO_NO_ENCONTRADO(3, "Usuario no encontrado en el sistema de seguridad"),
+    CODIGO_POSTAL_INVALIDO(1, "El código postal debe tener 5 dígitos"),
+    CODIGO_POSTAL_NO_ENCONTRADO(3, "No encontramos ese código postal; captura tu domicilio manualmente"),
     CATALOGO_NO_ENCONTRADO(3, "Valor fuera de catálogo o no reconocido"),
     RECURSO_RUTA_NO_ENCONTRADA(3, "Ruta no encontrada en el servidor"),
 
@@ -69,6 +72,11 @@ public enum ErrorMessage {
     AUTH_BIOMETRIA_VACIA(5, "La plantilla biométrica no puede estar vacía"),
     AUTH_HASH_ERROR(5, "Error al generar hash criptográfico para biometría"),
     AUTH_CLIENTE_INACTIVO(5, "El cliente asociado a este usuario está inactivo"),
+    AUTH_PASSWORD_ACTUAL_INCORRECTA(5, "La contraseña actual es incorrecta"),
+    AUTH_PASSWORD_REPETIDA(5, "La nueva contraseña debe ser distinta de la actual"),
+    CODIGOS_POSTALES_NO_DISPONIBLES(5, "El catálogo de códigos postales no está disponible en este momento; captura tu domicilio manualmente"),
+    AUTH_PASSWORD_REQUERIDA_CAMBIO_CORREO(5, "Para cambiar tu correo ingresa tu contraseña actual"),
+    AUTH_SIN_CORREO_2FA(5, "El usuario no tiene un correo registrado para recibir el código de verificación"),
     SEXO_INVALIDO(5, "El sexo proporcionado no existe en el catálogo oficial"),
     ESTADO_CIVIL_INVALIDO(5, "El estado civil proporcionado no existe en el catálogo oficial"),
     ESTADO_REPUBLICA_INVALIDO(5, "El estado de la república proporcionado no existe en el catálogo oficial"),
@@ -93,6 +101,8 @@ public enum ErrorMessage {
     PAGO_NO_CONCILIABLE(5, "El pago no se encuentra en un estado que permita conciliación"),
     LIMITE_CONSULTAS_CATALOGO(5, "Se alcanzó el límite diario de consultas del catálogo del proveedor; intente mañana"),
     REFERENCIA_REQUERIDA_SERVICIO(5, "La referencia del recibo o servicio es obligatoria para pagos de servicios"),
+    REFERENCIA_FORMATO_INVALIDO(5, "La referencia no tiene el formato esperado por el servicio"),
+    RANGO_FECHAS_INVALIDO(5, "La fecha inicial no puede ser posterior a la fecha final"),
 
     // =========================================================================
     // 6. CONFLICTO DE INTEGRIDAD (Código: 6)

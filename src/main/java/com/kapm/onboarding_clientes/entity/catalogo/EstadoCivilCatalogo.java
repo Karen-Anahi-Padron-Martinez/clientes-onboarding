@@ -15,15 +15,4 @@ public enum EstadoCivilCatalogo {
 
     private final String codigo;
     private final String descripcion;
-
-    public static boolean esValido(String valor) {
-        if (valor == null || valor.isBlank()) return false;
-        String v = valor.trim().toUpperCase().replace("/", "").replace(" ", "_");
-        for (EstadoCivilCatalogo e : values()) {
-            if (e.name().equalsIgnoreCase(v) || e.codigo.equalsIgnoreCase(v) || e.descripcion.equalsIgnoreCase(valor.trim())) {
-                return true;
-            }
-        }
-        return false;
-    }
 }

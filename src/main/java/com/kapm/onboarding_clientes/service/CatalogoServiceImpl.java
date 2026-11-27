@@ -151,33 +151,23 @@ public class CatalogoServiceImpl implements CatalogoService {
     @Override
     public List<CatalogoItemDTO> obtenerTiposBiometria() {
         return Arrays.stream(TipoBiometria.values())
-                .map(t -> {
-                    String descripcion;
-                    switch (t) {
-                        case HUELLA_DACTILAR -> descripcion = "Huella Dactilar";
-                        case RECONOCIMIENTO_FACIAL -> descripcion = "Reconocimiento Facial";
-                        case IRIS -> descripcion = "Escaneo de Iris";
-                        case PATRON_VASCULAR -> descripcion = "Patrón Vascular";
-                        default -> descripcion = t.name();
-                    }
-                    return new CatalogoItemDTO(t.name(), descripcion);
-                })
+                .map(t -> new CatalogoItemDTO(t.name(), switch (t) {
+                    case HUELLA_DACTILAR -> "Huella Dactilar";
+                    case RECONOCIMIENTO_FACIAL -> "Reconocimiento Facial";
+                    case IRIS -> "Escaneo de Iris";
+                    case PATRON_VASCULAR -> "Patrón Vascular";
+                }))
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<CatalogoItemDTO> obtenerEstatusCuenta() {
         return Arrays.stream(EstatusCuenta.values())
-                .map(e -> {
-                    String descripcion;
-                    switch (e) {
-                        case ACTIVA -> descripcion = "Activa";
-                        case INACTIVA -> descripcion = "Inactiva";
-                        case BLOQUEADA -> descripcion = "Bloqueada";
-                        default -> descripcion = e.name();
-                    }
-                    return new CatalogoItemDTO(e.name(), descripcion);
-                })
+                .map(e -> new CatalogoItemDTO(e.name(), switch (e) {
+                    case ACTIVA -> "Activa";
+                    case INACTIVA -> "Inactiva";
+                    case BLOQUEADA -> "Bloqueada";
+                }))
                 .collect(Collectors.toList());
     }
 
@@ -209,7 +199,7 @@ public class CatalogoServiceImpl implements CatalogoService {
                 .or(() -> catEstadoCivilRepository.findByDescripcionIgnoreCase(valor.trim()))
                 .orElseGet(() -> {
                     for (EstadoCivilCatalogo e : EstadoCivilCatalogo.values()) {
-                        if (e.getCodigo().equalsIgnoreCase(clean) || e.name().equalsIgnoreCase(clean) || e.getDescripcion().equalsIgnoreCase(valor.trim())) {
+                        if (e.getCodigo().equalsIgnoreCase(clean) || e.getDescripcion().equalsIgnoreCase(valor.trim())) {
                             return catEstadoCivilRepository.save(CatEstadoCivil.builder().codigo(e.getCodigo()).descripcion(e.getDescripcion()).build());
                         }
                     }
@@ -266,9 +256,9 @@ public class CatalogoServiceImpl implements CatalogoService {
         return catEstadoRepublicaRepository.findByCodigoIgnoreCase(cleanUpper)
                 .or(() -> catEstadoRepublicaRepository.findByDescripcionIgnoreCase(clean))
                 .orElseGet(() -> {
+                    // La descripción normalizada (mayúsculas, sin acentos, espacios a '_') coincide siempre con el código
                     for (EstadoRepublicaCatalogo e : EstadoRepublicaCatalogo.values()) {
-                        String normName = e.name().replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U");
-                        if (normName.equalsIgnoreCase(cleanUpper) || e.getCodigo().equalsIgnoreCase(cleanUpper) || e.getDescripcion().equalsIgnoreCase(clean)) {
+                        if (e.getCodigo().equalsIgnoreCase(cleanUpper)) {
                             return catEstadoRepublicaRepository.save(CatEstadoRepublica.builder().codigo(e.getCodigo()).descripcion(e.getDescripcion()).build());
                         }
                     }
@@ -287,8 +277,7 @@ public class CatalogoServiceImpl implements CatalogoService {
                 .or(() -> catPaisRepository.findByDescripcionIgnoreCase(clean))
                 .orElseGet(() -> {
                     for (PaisCatalogo p : PaisCatalogo.values()) {
-                        String normName = p.name().replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U");
-                        if (normName.equalsIgnoreCase(cleanUpper) || p.getCodigo().equalsIgnoreCase(cleanUpper) || p.getDescripcion().equalsIgnoreCase(clean)) {
+                        if (p.getCodigo().equalsIgnoreCase(cleanUpper) || p.getDescripcion().equalsIgnoreCase(clean)) {
                             return catPaisRepository.save(CatPais.builder().codigo(p.getCodigo()).descripcion(p.getDescripcion()).build());
                         }
                     }

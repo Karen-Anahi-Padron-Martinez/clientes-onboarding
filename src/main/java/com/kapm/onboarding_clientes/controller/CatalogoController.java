@@ -3,13 +3,16 @@ package com.kapm.onboarding_clientes.controller;
 import com.kapm.onboarding_clientes.dto.response.ApiResponse;
 import com.kapm.onboarding_clientes.dto.response.CatalogoItemDTO;
 import com.kapm.onboarding_clientes.dto.response.CatalogosResponse;
+import com.kapm.onboarding_clientes.dto.response.CodigoPostalResponse;
 import com.kapm.onboarding_clientes.service.CatalogoService;
+import com.kapm.onboarding_clientes.service.CodigoPostalService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -21,6 +24,19 @@ import java.util.List;
 public class CatalogoController {
 
     private final CatalogoService catalogoService;
+    private final CodigoPostalService codigoPostalService;
+
+    @GetMapping("/codigo-postal")
+    @Operation(summary = "Datos de domicilio por código postal", description = "Estado y país (códigos de catálogo), municipio y colonias del código postal, según el Catálogo Nacional de Códigos Postales de Correos de México. 404 si el código no existe.")
+    public ResponseEntity<ApiResponse<CodigoPostalResponse>> codigoPostal(@RequestParam("cp") String cp) {
+        return ResponseEntity.ok(ApiResponse.exito("Código postal encontrado", codigoPostalService.consultar(cp)));
+    }
+
+    @GetMapping("/municipios")
+    @Operation(summary = "Municipios o alcaldías por estado", description = "Lista ordenada alfabéticamente de municipios o alcaldías de la entidad federativa indicada (código de catálogo).")
+    public ResponseEntity<ApiResponse<List<String>>> municipios(@RequestParam("estado") String estado) {
+        return ResponseEntity.ok(ApiResponse.exito("Municipios consultados exitosamente", codigoPostalService.municipiosPorEstado(estado)));
+    }
 
     @GetMapping
     @Operation(summary = "Consultar todos los catálogos del sistema", description = "Retorna en una sola petición el conjunto completo de catálogos (Sexos, Estados Civiles, Nacionalidades, Ocupaciones, Estados de la República, Países, Tipos de Biometría y Estatus de Cuenta).")

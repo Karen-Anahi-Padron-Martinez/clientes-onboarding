@@ -24,20 +24,20 @@ public class Cliente {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Datos Personales (Campos inmutables post-onboarding con updatable = false)
-    @Column(nullable = false, updatable = false, columnDefinition = "TEXT")
+    // Datos Personales: el titular puede corregirlos desde su perfil; CURP y RFC son inmutables (updatable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String nombre;
 
-    @Column(name = "segundo_nombre", updatable = false, columnDefinition = "TEXT")
+    @Column(name = "segundo_nombre", columnDefinition = "TEXT")
     private String segundoNombre;
 
-    @Column(name = "apellido_paterno", nullable = false, updatable = false, columnDefinition = "TEXT")
+    @Column(name = "apellido_paterno", nullable = false, columnDefinition = "TEXT")
     private String apellidoPaterno;
 
-    @Column(name = "apellido_materno", nullable = false, updatable = false, columnDefinition = "TEXT")
+    @Column(name = "apellido_materno", nullable = false, columnDefinition = "TEXT")
     private String apellidoMaterno;
 
-    @Column(name = "fecha_nacimiento", nullable = false, updatable = false)
+    @Column(name = "fecha_nacimiento", nullable = false)
     private LocalDate fechaNacimiento;
 
     @Column(nullable = false, unique = true, updatable = false, columnDefinition = "TEXT")
@@ -51,7 +51,7 @@ public class Cliente {
     private CatSexo sexo;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "nacionalidad_id", referencedColumnName = "id", nullable = false, updatable = false)
+    @JoinColumn(name = "nacionalidad_id", referencedColumnName = "id", nullable = false)
     private CatNacionalidad nacionalidad;
 
     @ManyToOne(fetch = FetchType.EAGER)
@@ -73,7 +73,7 @@ public class Cliente {
     @JoinColumn(name = "ocupacion_id", referencedColumnName = "id", nullable = false)
     private CatOcupacion ocupacion;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String empresa;
 
     @Column(name = "ingreso_mensual", nullable = false, precision = 15, scale = 2)

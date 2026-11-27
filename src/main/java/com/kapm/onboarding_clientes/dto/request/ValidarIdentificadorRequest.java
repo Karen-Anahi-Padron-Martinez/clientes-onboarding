@@ -23,9 +23,23 @@ public class ValidarIdentificadorRequest {
     @Schema(description = "RFC a validar sintaxis y disponibilidad", example = "MEHC9208243A8")
     private String rfc;
 
+    @Schema(description = "Correo electrónico a validar disponibilidad", example = "carlos@correo.com")
+    private String correo;
+
+    @Schema(description = "Nombre de usuario a validar disponibilidad", example = "carlos.mendoza")
+    private String username;
+
+    public ValidarIdentificadorRequest(String curp, String rfc) {
+        this.curp = curp;
+        this.rfc = rfc;
+    }
+
     @JsonIgnore
     @AssertTrue(message = ValidationMessages.VALIDAR_ID_PRESENTE)
     public boolean isIdentificadorPresente() {
-        return (curp != null && !curp.isBlank()) || (rfc != null && !rfc.isBlank());
+        return (curp != null && !curp.isBlank())
+                || (rfc != null && !rfc.isBlank())
+                || (correo != null && !correo.isBlank())
+                || (username != null && !username.isBlank());
     }
 }

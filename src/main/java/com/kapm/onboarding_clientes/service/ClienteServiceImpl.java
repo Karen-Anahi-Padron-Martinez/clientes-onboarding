@@ -364,7 +364,33 @@ public class ClienteServiceImpl implements ClienteService {
     @Override
     @Transactional(readOnly = true)
     public ValidacionIdentificadorResponse validarDisponibilidad(ValidarIdentificadorRequest request) {
-        return segunIdentificador(request.getCurp(), request.getRfc(), this::validarDisponibilidadCurp, this::validarDisponibilidadRfc);
+        if (request.getCurp() != null && !request.getCurp().isBlank()) {
+            return validarDisponibilidadCurp(request.getCurp());
+        }
+        if (request.getRfc() != null && !request.getRfc().isBlank()) {
+            return validarDisponibilidadRfc(request.getRfc());
+        }
+        if (request.getCorreo() != null && !request.getCorreo().isBlank()) {
+            return validarDisponibilidadCorreo(request.getCorreo());
+        }
+        if (request.getUsername() != null && !request.getUsername().isBlank()) {
+            return validarDisponibilidadUsername(request.getUsername());
+        }
+        throw new ReglaNegocioException(ErrorMessage.IDENTIFICADOR_REQUERIDO);
+    }
+
+    private ValidacionIdentificadorResponse validarDisponibilidadCorreo(String correo) {
+        String limpio = correo.trim().toLowerCase();
+        boolean existe = clienteRepository.existsByCorreo(limpio);
+        return disponibilidad(limpio, "CORREO", existe,
+                existe ? "Este correo electrónico ya está en uso" : "El correo electrónico está disponible");
+    }
+
+    private ValidacionIdentificadorResponse validarDisponibilidadUsername(String username) {
+        String limpio = username.trim();
+        boolean existe = seguridadRepository.existsByUsername(limpio);
+        return disponibilidad(limpio, "USERNAME", existe,
+                existe ? "Este usuario ya está en uso" : "El nombre de usuario está disponible");
     }
 
     @Override

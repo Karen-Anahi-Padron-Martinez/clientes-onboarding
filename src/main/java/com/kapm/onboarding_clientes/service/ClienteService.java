@@ -6,6 +6,7 @@ import com.kapm.onboarding_clientes.dto.response.CuentaResponse;
 import com.kapm.onboarding_clientes.dto.response.LoginResponse;
 import com.kapm.onboarding_clientes.dto.response.PageResponse;
 import com.kapm.onboarding_clientes.dto.response.ValidacionIdentificadorResponse;
+import com.kapm.onboarding_clientes.entity.Cliente;
 
 import java.util.List;
 
@@ -76,6 +77,12 @@ public interface ClienteService {
     CuentaResponse obtenerCuentaPorRfc(String rfc);
 
     LoginResponse autenticarCliente(LoginRequest request);
+
+    /** Primer factor del login: valida usuario y contraseña sin abrir sesión. Devuelve el cliente (puede ser null). */
+    Cliente verificarCredenciales(LoginRequest request);
+
+    /** Abre la sesión y emite el JWT; solo se invoca después de validar el segundo factor. */
+    LoginResponse abrirSesion(String username);
 
     /**
      * CURP del cliente dueño del usuario autenticado.

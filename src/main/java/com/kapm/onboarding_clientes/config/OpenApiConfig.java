@@ -38,7 +38,7 @@ public class OpenApiConfig {
                                 + "* **Cero Uso de IDs de Base de Datos**: Todas las operaciones de consulta, modificación, baja y reactivación se realizan exclusivamente con CURP y RFC.\n"
                                 + "* **Registro Seguro de Clientes**: Creación automática de cuenta bancaria y saldo inicial sin exponer identificadores internos de base de datos (`id`).\n"
                                 + "* **Pre-validación en Tiempo Real**: Verificación sintáctica oficial (RENAPO / SAT) y comprobación de disponibilidad previa (`POST /api/clientes/validar`).\n"
-                                + "* **Seguridad Financiera y Biometría**: Cifrado BCrypt y SHA-256 con temporizador de inactividad de 5 segundos (`loggeado: true/false`).\n"
+                                + "* **Seguridad Financiera y Biometría**: Cifrado BCrypt y SHA-256 con temporizador de inactividad configurable (900 s por defecto) (`loggeado: true/false`).\n"
                                 + "* **Catálogos Estandarizados**: Normalización de sexos, nacionalidades, estados civiles, 32 estados de México y ocupaciones.")
                         .contact(new Contact()
                                 .name("Equipo de Desarrollo Financiero")

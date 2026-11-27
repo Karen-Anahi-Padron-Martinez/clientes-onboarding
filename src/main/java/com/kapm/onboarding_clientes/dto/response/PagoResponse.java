@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.kapm.onboarding_clientes.config.JacksonConfig;
 import com.kapm.onboarding_clientes.entity.EstatusPago;
 import com.kapm.onboarding_clientes.entity.PagoServicio;
+import com.kapm.onboarding_clientes.entity.catalogo.CatalogoProductoPuntoRed;
+import com.kapm.onboarding_clientes.util.MensajeProveedor;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
@@ -77,6 +79,23 @@ public class PagoResponse {
     @Schema(description = "Fecha y hora de última actualización de la transacción")
     private LocalDateTime fechaActualizacion;
 
+    /** Datos del producto para historial y detalle (se omiten si el producto ya no está en el catálogo). */
+    private String nombreProducto;
+    private String nombreServicio;
+    private String categoria;
+    private String logoUrl;
+
+    public static PagoResponse desde(PagoServicio pago, String mensaje, CatalogoProductoPuntoRed producto) {
+        PagoResponse response = desde(pago, mensaje);
+        if (producto != null) {
+            response.setNombreProducto(producto.getNombreProducto());
+            response.setNombreServicio(producto.getNombreServicio());
+            response.setCategoria(producto.getCategoria());
+            response.setLogoUrl(producto.getLogoUrl());
+        }
+        return response;
+    }
+
     public static PagoResponse desde(PagoServicio pago, String mensaje) {
         return PagoResponse.builder()
                 .upc(pago.getUpc())
@@ -92,7 +111,8 @@ public class PagoResponse {
                 .idTxProveedor(pago.getIdTxProveedor())
                 .numAutorizacion(pago.getNumAutorizacion())
                 .codigoRespuesta(pago.getCodigoRespuesta())
-                .textoRespuesta(pago.getTextoRespuesta())
+                // Sin volcados técnicos del proveedor (IPs, dispositivo): solo el mensaje legible
+                .textoRespuesta(MensajeProveedor.limpiar(pago.getTextoRespuesta()))
                 .mensaje(mensaje)
                 .fechaCreacion(pago.getFechaCreacion())
                 .fechaActualizacion(pago.getFechaActualizacion())

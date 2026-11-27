@@ -61,6 +61,24 @@ public class PuntoRedProperties {
 
     /** Habilita las tareas programadas (conciliación y sincronización de catálogo). */
     private boolean schedulerEnabled = true;
+
+    /**
+     * Imágenes públicas de Gestopago: logo en {base}/servicios/{idServicio}.png y ayuda del recibo
+     * (dónde está la referencia) en {base}/referencias/{idServicio}.jpg.
+     */
+    private String imagenesBaseUrl = "https://gestopago.portalventas.net/sistema/images/gestopago";
+
+    public String logoServicio(Integer idServicio) {
+        return idServicio == null ? null : quitarDiagonal(imagenesBaseUrl) + "/servicios/" + idServicio + ".png";
+    }
+
+    public String imagenAyudaReferencia(Integer idServicio) {
+        return idServicio == null ? null : quitarDiagonal(imagenesBaseUrl) + "/referencias/" + idServicio + ".jpg";
+    }
+
+    private static String quitarDiagonal(String url) {
+        return url != null && url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
     public String getUsername() {
         return usuario;
     }

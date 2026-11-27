@@ -13,11 +13,11 @@ import com.kapm.onboarding_clientes.entity.catalogo.CatalogoProductoPuntoRed;
 import com.kapm.onboarding_clientes.exception.*;
 import com.kapm.onboarding_clientes.repository.CatalogoProductoPuntoRedRepository;
 import com.kapm.onboarding_clientes.repository.PagoServicioRepository;
+import com.kapm.onboarding_clientes.util.Tiempo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -68,7 +68,7 @@ public class VerificacionPagosServiceImpl implements VerificacionPagosService {
     }
 
     Resultado verificarPago(PagoServicio pago) {
-        long minutos = Duration.between(pago.getFechaCreacion(), LocalDateTime.now()).toMinutes();
+        long minutos = Tiempo.transcurridoDesde(pago.getFechaCreacion()).toMinutes();
         if (pago.getIdTxProveedor() != null && !pago.getIdTxProveedor().isBlank()) {
             return verificarConConfirmTx(pago, minutos);
         }

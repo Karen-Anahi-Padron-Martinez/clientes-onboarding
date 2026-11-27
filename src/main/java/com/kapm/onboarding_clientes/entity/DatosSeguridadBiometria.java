@@ -26,10 +26,10 @@ public class DatosSeguridadBiometria {
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "tipo_biometria", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "tipo_biometria", columnDefinition = "TEXT")
     private TipoBiometria tipoBiometria;
 
-    @Column(name = "hash_biometrico", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "hash_biometrico", columnDefinition = "TEXT")
     private String hashBiometrico;
 
     @Column(name = "loggeado", nullable = false)

@@ -9,7 +9,10 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ClienteSpecification {
+public final class ClienteSpecification {
+
+    private ClienteSpecification() {
+    }
 
     public static Specification<Cliente> conFiltros(BuscarClienteRequest request) {
         return (root, query, cb) -> {

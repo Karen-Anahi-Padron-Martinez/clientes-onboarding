@@ -13,7 +13,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
@@ -50,10 +49,6 @@ public class BrevoEmailClient {
         this.restClient = restClient;
         this.properties = properties;
         this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
-    }
-
-    public BrevoEmailClient(RestClient restClient, BrevoProperties properties) {
-        this(restClient, properties, new ObjectMapper());
     }
 
     /**
@@ -99,12 +94,6 @@ public class BrevoEmailClient {
                     correoEnmascarado, messageId != null ? messageId : "N/A", duracion);
 
             return messageId;
-
-        } catch (HttpClientErrorException.Unauthorized ex) {
-            long duracion = System.currentTimeMillis() - inicio;
-            log.error("Autenticación fallida con Brevo (HTTP 401) al enviar a {}. Duración: {} ms",
-                    correoEnmascarado, duracion);
-            throw new CorreoNoEnviadoException("Error de autenticación con Brevo (HTTP 401): API key inválida o no autorizada", ex);
 
         } catch (RestClientResponseException ex) {
             long duracion = System.currentTimeMillis() - inicio;

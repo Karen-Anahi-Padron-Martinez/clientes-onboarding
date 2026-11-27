@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.regex.Pattern;
 
-public class CurpRfcUtil {
+public final class CurpRfcUtil {
 
     /**
      * Expresión Regular oficial RENAPO para CURP (18 caracteres):
@@ -26,6 +26,9 @@ public class CurpRfcUtil {
 
     private static final Pattern CURP_PATTERN = Pattern.compile(CURP_REGEX);
     private static final Pattern RFC_PATTERN = Pattern.compile(RFC_REGEX);
+
+    private CurpRfcUtil() {
+    }
 
     /**
      * Valida si una cadena cumple con el formato oficial de CURP.

@@ -10,6 +10,7 @@ import com.kapm.onboarding_clientes.exception.ErrorMessage;
 import com.kapm.onboarding_clientes.exception.ReglaNegocioException;
 import com.kapm.onboarding_clientes.repository.ClienteRepository;
 import com.kapm.onboarding_clientes.repository.CodigoVerificacionPagoRepository;
+import com.kapm.onboarding_clientes.util.DatosSensibles;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +25,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.List;
 
 /**
@@ -84,7 +86,7 @@ public class CodigoVerificacionServiceImpl implements CodigoVerificacionService 
         LocalDateTime limiteDiezMinutos = LocalDateTime.now().minusMinutes(10);
         long solicitudesRecientes = codigoVerificacionRepository.countByNumeroCuentaAndCreadoEnAfter(numeroCuenta, limiteDiezMinutos);
         if (solicitudesRecientes >= maxSolicitudes10Min) {
-            log.warn("Límite de solicitudes de código 2FA superado para la cuenta {}", enmascararCuenta(numeroCuenta));
+            log.warn("Límite de solicitudes de código 2FA superado para la cuenta {}", DatosSensibles.enmascarar(numeroCuenta));
             throw new ReglaNegocioException(ErrorMessage.CODIGO_2FA_LIMITE_SOLICITUDES);
         }
 
@@ -95,7 +97,7 @@ public class CodigoVerificacionServiceImpl implements CodigoVerificacionService 
                 anterior.setUsado(true);
             }
             codigoVerificacionRepository.saveAll(codigosAnteriores);
-            log.debug("Se invalidaron {} códigos 2FA anteriores para la cuenta {}", codigosAnteriores.size(), enmascararCuenta(numeroCuenta));
+            log.debug("Se invalidaron {} códigos 2FA anteriores para la cuenta {}", codigosAnteriores.size(), DatosSensibles.enmascarar(numeroCuenta));
         }
 
         // 4. Generar código de 6 dígitos numéricos con SecureRandom
@@ -137,7 +139,7 @@ public class CodigoVerificacionServiceImpl implements CodigoVerificacionService 
         String htmlBody = construirPlantillaHtml(cliente.getNombre(), codigo6Digitos, expiracionMinutos);
 
         brevoEmailClient.enviarCorreo(correoRegistrado, asunto, htmlBody);
-        log.info("Código 2FA generado y despachado por correo para cuenta {}", enmascararCuenta(numeroCuenta));
+        log.info("Código 2FA generado y despachado por correo para cuenta {}", DatosSensibles.enmascarar(numeroCuenta));
 
         return CodigoVerificacionResponse.builder()
                 .enviado(true)
@@ -179,7 +181,7 @@ public class CodigoVerificacionServiceImpl implements CodigoVerificacionService 
 
         // 3. Regla: Código de un solo uso (ya consumido o invalidado)
         if (Boolean.TRUE.equals(codigoEntity.getUsado())) {
-            log.warn("Intento de reutilizar código 2FA para cuenta {}", enmascararCuenta(numeroCuenta));
+            log.warn("Intento de reutilizar código 2FA para cuenta {}", DatosSensibles.enmascarar(numeroCuenta));
             throw new ReglaNegocioException(ErrorMessage.CODIGO_2FA_YA_USADO);
         }
 
@@ -187,7 +189,7 @@ public class CodigoVerificacionServiceImpl implements CodigoVerificacionService 
         if (codigoEntity.getIntentos() >= maxIntentos) {
             codigoEntity.setUsado(true);
             codigoVerificacionRepository.save(codigoEntity);
-            log.warn("Código 2FA bloqueado por intentos agotados para cuenta {}", enmascararCuenta(numeroCuenta));
+            log.warn("Código 2FA bloqueado por intentos agotados para cuenta {}", DatosSensibles.enmascarar(numeroCuenta));
             throw new ReglaNegocioException(ErrorMessage.CODIGO_2FA_INTENTOS_AGOTADOS);
         }
 
@@ -195,13 +197,13 @@ public class CodigoVerificacionServiceImpl implements CodigoVerificacionService 
         if (LocalDateTime.now().isAfter(codigoEntity.getExpiraEn())) {
             codigoEntity.setUsado(true);
             codigoVerificacionRepository.save(codigoEntity);
-            log.warn("Código 2FA expirado para cuenta {}", enmascararCuenta(numeroCuenta));
+            log.warn("Código 2FA expirado para cuenta {}", DatosSensibles.enmascarar(numeroCuenta));
             throw new ReglaNegocioException(ErrorMessage.CODIGO_2FA_EXPIRADO);
         }
 
         // 6. Regla: Operación exacta (hashOperacion)
         if (!codigoEntity.getHashOperacion().equals(hashOperacionCalculado)) {
-            log.warn("Código 2FA presentado para una operación distinta en cuenta {}", enmascararCuenta(numeroCuenta));
+            log.warn("Código 2FA presentado para una operación distinta en cuenta {}", DatosSensibles.enmascarar(numeroCuenta));
             throw new ReglaNegocioException(ErrorMessage.CODIGO_2FA_OPERACION_DISTINTA);
         }
 
@@ -214,12 +216,12 @@ public class CodigoVerificacionServiceImpl implements CodigoVerificacionService 
             if (nuevoIntentos >= maxIntentos) {
                 codigoEntity.setUsado(true); // Se invalida definitivamente
                 codigoVerificacionRepository.save(codigoEntity);
-                log.warn("Código 2FA invalidado tras alcanzar {} intentos fallidos en cuenta {}", nuevoIntentos, enmascararCuenta(numeroCuenta));
+                log.warn("Código 2FA invalidado tras alcanzar {} intentos fallidos en cuenta {}", nuevoIntentos, DatosSensibles.enmascarar(numeroCuenta));
                 throw new ReglaNegocioException(ErrorMessage.CODIGO_2FA_INTENTOS_AGOTADOS);
             } else {
                 codigoVerificacionRepository.save(codigoEntity);
                 int intentosRestantes = maxIntentos - nuevoIntentos;
-                log.warn("Intento fallido de código 2FA (intento {}/{}) para cuenta {}", nuevoIntentos, maxIntentos, enmascararCuenta(numeroCuenta));
+                log.warn("Intento fallido de código 2FA (intento {}/{}) para cuenta {}", nuevoIntentos, maxIntentos, DatosSensibles.enmascarar(numeroCuenta));
                 throw new ReglaNegocioException(ErrorMessage.CODIGO_2FA_INVALIDO, "Código incorrecto. Intentos restantes: " + intentosRestantes);
             }
         }
@@ -227,7 +229,7 @@ public class CodigoVerificacionServiceImpl implements CodigoVerificacionService 
         // 8. Código correcto: marcar como usado (consumir código)
         codigoEntity.setUsado(true);
         codigoVerificacionRepository.save(codigoEntity);
-        log.info("Código 2FA consumido y validado exitosamente para cuenta {}", enmascararCuenta(numeroCuenta));
+        log.info("Código 2FA consumido y validado exitosamente para cuenta {}", DatosSensibles.enmascarar(numeroCuenta));
 
         return true;
     }
@@ -253,16 +255,7 @@ public class CodigoVerificacionServiceImpl implements CodigoVerificacionService 
         String raw = cuenta + "|" + prod + "|" + serv + "|" + refOTel + "|" + montoStr;
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] digest = md.digest(raw.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : digest) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-            return hexString.toString();
+            return HexFormat.of().formatHex(md.digest(raw.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("Algoritmo criptográfico SHA-256 no disponible", e);
         }
@@ -272,12 +265,11 @@ public class CodigoVerificacionServiceImpl implements CodigoVerificacionService 
     // MÉTODOS PRIVADOS AUXILIARES
     // =========================================================================
 
+    /** {@code numeroCuenta} ya llega validado (no vacío) y recortado desde {@link #emitirCodigo}. */
     private Cliente buscarClientePorCuentaOCurp(String numeroCuenta, String curp) {
-        if (numeroCuenta != null && !numeroCuenta.isBlank()) {
-            var optCliente = clienteRepository.findByCuentaNumeroCuenta(numeroCuenta.trim());
-            if (optCliente.isPresent()) {
-                return optCliente.get();
-            }
+        var optCliente = clienteRepository.findByCuentaNumeroCuenta(numeroCuenta);
+        if (optCliente.isPresent()) {
+            return optCliente.get();
         }
         if (curp != null && !curp.isBlank()) {
             return clienteRepository.findByCurp(curp.trim())
@@ -304,12 +296,5 @@ public class CodigoVerificacionServiceImpl implements CodigoVerificacionService 
                 + "<hr style='border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;'/>"
                 + "<p style='font-size: 12px; color: #a0aec0; text-align: center;'>Banco Digital - Si tú no solicitaste este código, comunícate con nosotros inmediatamente.</p>"
                 + "</div>";
-    }
-
-    private String enmascararCuenta(String numeroCuenta) {
-        if (numeroCuenta == null || numeroCuenta.length() < 4) {
-            return "****";
-        }
-        return "******" + numeroCuenta.substring(numeroCuenta.length() - 4);
     }
 }

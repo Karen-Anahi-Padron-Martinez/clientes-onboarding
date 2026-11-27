@@ -20,15 +20,4 @@ public enum NacionalidadCatalogo {
 
     private final String codigo;
     private final String descripcion;
-
-    public static boolean esValido(String valor) {
-        if (valor == null || valor.isBlank()) return false;
-        String v = valor.trim().toUpperCase();
-        for (NacionalidadCatalogo n : values()) {
-            if (n.name().equalsIgnoreCase(v) || n.codigo.equalsIgnoreCase(v) || n.descripcion.equalsIgnoreCase(valor.trim())) {
-                return true;
-            }
-        }
-        return false;
-    }
 }

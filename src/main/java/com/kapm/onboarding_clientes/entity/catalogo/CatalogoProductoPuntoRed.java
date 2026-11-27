@@ -56,4 +56,28 @@ public class CatalogoProductoPuntoRed {
 
     @Column(name = "monto_maximo", precision = 15, scale = 2)
     private BigDecimal montoMaximo;
+
+    /*
+     * Datos de presentación administrados localmente: getProductList no los entrega y la sincronización
+     * no los sobrescribe. Todos son opcionales.
+     */
+    @Column(name = "logo_url", columnDefinition = "TEXT")
+    private String logoUrl;
+
+    @Column(name = "descripcion", columnDefinition = "TEXT")
+    private String descripcion;
+
+    @Column(name = "categoria", columnDefinition = "TEXT")
+    private String categoria;
+
+    /**
+     * Tipo de referencia de Gestopago: "a" = número telefónico a 10 dígitos (recargas, paquetes y tarjetas
+     * que se entregan al celular); "b"/"c" = referencia del recibo.
+     */
+    @Column(name = "tipo_referencia", columnDefinition = "TEXT")
+    private String tipoReferencia;
+
+    /** Expresión regular que debe cumplir la referencia (servicios) o el teléfono (recargas). */
+    @Column(name = "regex_referencia", columnDefinition = "TEXT")
+    private String regexReferencia;
 }

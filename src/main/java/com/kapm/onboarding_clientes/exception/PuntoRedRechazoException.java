@@ -9,6 +9,9 @@ import lombok.Getter;
 @Getter
 public class PuntoRedRechazoException extends PuntoRedIntegracionException {
 
+    /** NUM_AUTORIZACION que PuntoRed devuelve aun en un rechazo (p. ej. "-1"); puede ser null. */
+    private String numAutorizacion;
+
     public PuntoRedRechazoException(String codigoPuntoRed, String textoPuntoRed) {
         super(
                 ErrorMessage.PUNTORED_TRANSACCION_RECHAZADA.getCodigo(),
@@ -25,5 +28,12 @@ public class PuntoRedRechazoException extends PuntoRedIntegracionException {
                 codigoPuntoRed,
                 textoPuntoRed
         );
+    }
+
+    /** Rechazo de sendTx que conserva el NUM_AUTORIZACION de la respuesta. */
+    public static PuntoRedRechazoException conAutorizacion(String codigoPuntoRed, String textoPuntoRed, String numAutorizacion) {
+        PuntoRedRechazoException e = new PuntoRedRechazoException(codigoPuntoRed, textoPuntoRed);
+        e.numAutorizacion = numAutorizacion;
+        return e;
     }
 }

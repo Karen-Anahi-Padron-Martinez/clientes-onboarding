@@ -23,6 +23,6 @@ public class ReglaNegocioException extends RuntimeException {
     }
 
     public int getCodigo() {
-        return errorMessage != null ? errorMessage.getCodigo() : ErrorMessage.REGLA_NEGOCIO.getCodigo();
+        return errorMessage.getCodigo();
     }
 }

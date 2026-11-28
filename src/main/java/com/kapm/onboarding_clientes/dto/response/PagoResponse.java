@@ -84,6 +84,8 @@ public class PagoResponse {
     private String nombreServicio;
     private String categoria;
     private String logoUrl;
+    @Schema(description = "Leyenda informativa del producto tomada del catálogo JSON")
+    private String leyenda;
 
     public static PagoResponse desde(PagoServicio pago, String mensaje, CatalogoProductoPuntoRed producto) {
         PagoResponse response = desde(pago, mensaje);
@@ -92,6 +94,7 @@ public class PagoResponse {
             response.setNombreServicio(producto.getNombreServicio());
             response.setCategoria(producto.getCategoria());
             response.setLogoUrl(producto.getLogoUrl());
+            response.setLeyenda(producto.getDescripcion());
         }
         return response;
     }

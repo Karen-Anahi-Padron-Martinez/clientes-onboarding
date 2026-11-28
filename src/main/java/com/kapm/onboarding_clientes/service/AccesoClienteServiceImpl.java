@@ -34,6 +34,7 @@ public class AccesoClienteServiceImpl implements AccesoClienteService {
     private final SeguridadBiometriaService seguridadBiometriaService;
     private final DatosSeguridadBiometriaRepository seguridadRepository;
     private final ClienteRepository clienteRepository;
+    private final Google2FAService google2FAService;
 
     @Override
     public LoginDesafioResponse iniciarLogin(LoginRequest request) {
@@ -42,11 +43,20 @@ public class AccesoClienteServiceImpl implements AccesoClienteService {
             throw new ReglaNegocioException(ErrorMessage.AUTH_SIN_CORREO_2FA);
         }
         String username = request.getUsername().trim();
+        if (google2FAService != null && google2FAService.estaHabilitado(username)) {
+            return LoginDesafioResponse.builder()
+                    .requiereCodigo(true)
+                    .username(username)
+                    .metodo2fa(Google2FAService.METODO_GOOGLE)
+                    .mensaje("Ingresa el código de 6 dígitos de tu app Google Authenticator")
+                    .build();
+        }
         CodigoVerificacionResponse envio = codigoAccesoService.emitir(username, cliente, PropositoCodigoAcceso.LOGIN);
 
         return LoginDesafioResponse.builder()
                 .requiereCodigo(true)
                 .username(username)
+                .metodo2fa(Google2FAService.METODO_CORREO)
                 .correoEnmascarado(envio.getCorreoEnmascarado())
                 .codigoExpiraEn(envio.getExpiraEn())
                 .mensaje("Te enviamos un código de verificación a " + envio.getCorreoEnmascarado())
@@ -56,7 +66,11 @@ public class AccesoClienteServiceImpl implements AccesoClienteService {
     @Override
     public LoginResponse verificarLogin(VerificarLoginRequest request) {
         String username = request.getUsername().trim();
-        codigoAccesoService.validar(username, PropositoCodigoAcceso.LOGIN, request.getCodigo());
+        if (google2FAService != null && google2FAService.estaHabilitado(username)) {
+            google2FAService.validarCodigoActivo(username, request.getCodigo());
+        } else {
+            codigoAccesoService.validar(username, PropositoCodigoAcceso.LOGIN, request.getCodigo());
+        }
         return clienteService.abrirSesion(username);
     }
 

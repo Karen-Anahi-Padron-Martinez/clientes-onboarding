@@ -25,6 +25,9 @@ public class SolicitarCodigoPagoResponse {
     @Schema(description = "Mensaje informativo", example = "Código de verificación enviado al correo registrado")
     private String mensaje;
 
+    @Schema(description = "Método 2FA requerido: CORREO o GOOGLE_AUTHENTICATOR", example = "GOOGLE_AUTHENTICATOR")
+    private String metodo2fa;
+
     @Schema(description = "Correo electrónico registrado del cliente, enmascarado", example = "c***@dominio.com")
     private String correoEnmascarado;
 

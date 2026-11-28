@@ -24,10 +24,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.text.Collator;
+import java.text.Normalizer;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -67,6 +69,7 @@ public class CodigoPostalService {
     private final boolean precarga;
     private volatile Map<String, Datos> indice;
     private volatile Map<String, List<String>> municipiosPorEstado;
+    private volatile Map<String, List<String>> coloniasPorMunicipio;
 
     public CodigoPostalService(
             @Value("${app.codigos-postales.url:https://www.correosdemexico.gob.mx/datosabiertos/cp/cpdescarga.txt}") String url,
@@ -102,12 +105,13 @@ public class CodigoPostalService {
         if (datos == null) {
             throw new RecursoNoEncontradoException(ErrorMessage.CODIGO_POSTAL_NO_ENCONTRADO);
         }
+        List<String> colonias = combinarColonias(datos.colonias(), coloniasPorMunicipio(datos.estado(), datos.municipio()));
         return CodigoPostalResponse.builder()
                 .codigoPostal(cp)
                 .estado(datos.estado())
                 .municipio(datos.municipio())
                 .pais(PAIS)
-                .colonias(datos.colonias())
+                .colonias(colonias)
                 .build();
     }
 
@@ -120,6 +124,19 @@ public class CodigoPostalService {
         indice();
         Map<String, List<String>> mapa = municipiosPorEstado;
         return mapa != null ? mapa.getOrDefault(clave, List.of()) : List.of();
+    }
+
+    /** Colonias o asentamientos distintos y ordenados alfabéticamente de un municipio dentro de un estado. */
+    public List<String> coloniasPorMunicipio(String estado, String municipio) {
+        if (estado == null || estado.isBlank() || municipio == null || municipio.isBlank()) {
+            return List.of();
+        }
+        indice();
+        Map<String, List<String>> mapa = coloniasPorMunicipio;
+        if (mapa == null) {
+            return List.of();
+        }
+        return mapa.getOrDefault(claveMunicipio(estado, municipio), List.of());
     }
 
     private Map<String, Datos> indice() {
@@ -136,6 +153,7 @@ public class CodigoPostalService {
                         cargado = parsear(reader);
                     }
                     municipiosPorEstado = agruparMunicipios(cargado);
+                    coloniasPorMunicipio = agruparColoniasPorMunicipio(cargado);
                     indice = cargado;
                     log.info("Catálogo de códigos postales cargado: {} códigos", indice.size());
                 } catch (Exception e) {
@@ -145,6 +163,47 @@ public class CodigoPostalService {
             }
             return indice;
         }
+    }
+
+    private static Map<String, List<String>> agruparColoniasPorMunicipio(Map<String, Datos> datosPorCp) {
+        Collator collator = Collator.getInstance(Locale.of("es", "MX"));
+        collator.setStrength(Collator.PRIMARY);
+        Map<String, TreeSet<String>> porMunicipio = new HashMap<>();
+        for (Datos d : datosPorCp.values()) {
+            if (d.municipio() != null && !d.municipio().isBlank() && d.colonias() != null) {
+                TreeSet<String> set = porMunicipio.computeIfAbsent(
+                        claveMunicipio(d.estado(), d.municipio()), k -> new TreeSet<>(collator));
+                set.addAll(d.colonias());
+            }
+        }
+        Map<String, List<String>> resultado = new HashMap<>(porMunicipio.size());
+        porMunicipio.forEach((clave, set) -> resultado.put(clave, List.copyOf(set)));
+        return resultado;
+    }
+
+    /** Mantiene primero las colonias exactas del CP y añade el resto del municipio sin duplicados. */
+    private static List<String> combinarColonias(List<String> delCp, List<String> delMunicipio) {
+        if (delMunicipio == null || delMunicipio.isEmpty()) {
+            return delCp;
+        }
+        Map<String, String> unicas = new LinkedHashMap<>();
+        for (String c : delCp) {
+            unicas.putIfAbsent(normalizarClave(c), c);
+        }
+        for (String c : delMunicipio) {
+            unicas.putIfAbsent(normalizarClave(c), c);
+        }
+        return List.copyOf(unicas.values());
+    }
+
+    private static String claveMunicipio(String estado, String municipio) {
+        return estado.trim().toUpperCase(Locale.ROOT) + "|" + normalizarClave(municipio);
+    }
+
+    private static String normalizarClave(String texto) {
+        String sinAcentos = Normalizer.normalize(texto.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
+        return sinAcentos.toUpperCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 
     private static Map<String, List<String>> agruparMunicipios(Map<String, Datos> datosPorCp) {

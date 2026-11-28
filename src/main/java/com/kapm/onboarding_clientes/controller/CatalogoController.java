@@ -38,6 +38,14 @@ public class CatalogoController {
         return ResponseEntity.ok(ApiResponse.exito("Municipios consultados exitosamente", codigoPostalService.municipiosPorEstado(estado)));
     }
 
+    @GetMapping("/colonias")
+    @Operation(summary = "Colonias por estado y municipio", description = "Lista ordenada alfabéticamente de colonias o asentamientos del municipio indicado dentro de la entidad federativa.")
+    public ResponseEntity<ApiResponse<List<String>>> colonias(@RequestParam("estado") String estado,
+                                                              @RequestParam("municipio") String municipio) {
+        return ResponseEntity.ok(ApiResponse.exito("Colonias consultadas exitosamente",
+                codigoPostalService.coloniasPorMunicipio(estado, municipio)));
+    }
+
     @GetMapping
     @Operation(summary = "Consultar todos los catálogos del sistema", description = "Retorna en una sola petición el conjunto completo de catálogos (Sexos, Estados Civiles, Nacionalidades, Ocupaciones, Estados de la República, Países, Tipos de Biometría y Estatus de Cuenta).")
     public ResponseEntity<ApiResponse<CatalogosResponse>> obtenerTodosLosCatalogos() {

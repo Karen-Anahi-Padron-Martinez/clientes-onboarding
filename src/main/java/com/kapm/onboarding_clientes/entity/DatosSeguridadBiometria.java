@@ -48,11 +48,28 @@ public class DatosSeguridadBiometria {
     @Column(name = "fecha_registro_biometrico", nullable = false, updatable = false)
     private LocalDateTime fechaRegistroBiometrico;
 
+    /** Google Authenticator (TOTP RFC 6238): activo solo después de verificar el primer código. */
+    @Column(name = "totp_habilitado")
+    private Boolean totpHabilitado;
+
+    @Column(name = "totp_secret", columnDefinition = "TEXT")
+    private String totpSecret;
+
+    @Column(name = "totp_secret_pendiente", columnDefinition = "TEXT")
+    private String totpSecretPendiente;
+
+    /** Último intervalo de 30 s consumido para evitar reutilización del mismo código TOTP. */
+    @Column(name = "totp_ultimo_paso")
+    private Long totpUltimoPaso;
+
     @PrePersist
     protected void onCreate() {
         this.fechaRegistroBiometrico = LocalDateTime.now();
         if (this.loggeado == null) {
             this.loggeado = false;
+        }
+        if (this.totpHabilitado == null) {
+            this.totpHabilitado = false;
         }
     }
 }

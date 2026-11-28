@@ -14,8 +14,8 @@ import com.kapm.onboarding_clientes.exception.*;
 import com.kapm.onboarding_clientes.repository.CatalogoProductoPuntoRedRepository;
 import com.kapm.onboarding_clientes.repository.PagoServicioRepository;
 import com.kapm.onboarding_clientes.util.Tiempo;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -23,7 +23,6 @@ import java.util.List;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class VerificacionPagosServiceImpl implements VerificacionPagosService {
 
     enum Resultado { LIQUIDADO, LIBERADO, ESCALADO, SIN_CAMBIO }
@@ -34,6 +33,36 @@ public class VerificacionPagosServiceImpl implements VerificacionPagosService {
     private final PagoServicioService pagoServicioService;
     private final PuntoRedClient puntoRedClient;
     private final PuntoRedProperties properties;
+    private final TicketCorreoService ticketCorreoService;
+
+    @Autowired
+    public VerificacionPagosServiceImpl(
+            PagoServicioRepository pagoServicioRepository,
+            CatalogoProductoPuntoRedRepository catalogoProductoRepository,
+            PagoTransaccionalService pagoTransaccionalService,
+            PagoServicioService pagoServicioService,
+            PuntoRedClient puntoRedClient,
+            PuntoRedProperties properties,
+            TicketCorreoService ticketCorreoService) {
+        this.pagoServicioRepository = pagoServicioRepository;
+        this.catalogoProductoRepository = catalogoProductoRepository;
+        this.pagoTransaccionalService = pagoTransaccionalService;
+        this.pagoServicioService = pagoServicioService;
+        this.puntoRedClient = puntoRedClient;
+        this.properties = properties;
+        this.ticketCorreoService = ticketCorreoService;
+    }
+
+    public VerificacionPagosServiceImpl(
+            PagoServicioRepository pagoServicioRepository,
+            CatalogoProductoPuntoRedRepository catalogoProductoRepository,
+            PagoTransaccionalService pagoTransaccionalService,
+            PagoServicioService pagoServicioService,
+            PuntoRedClient puntoRedClient,
+            PuntoRedProperties properties) {
+        this(pagoServicioRepository, catalogoProductoRepository, pagoTransaccionalService,
+                pagoServicioService, puntoRedClient, properties, null);
+    }
 
     @Override
     public int verificarPendientes() {
@@ -64,7 +93,10 @@ public class VerificacionPagosServiceImpl implements VerificacionPagosService {
 
         Resultado resultado = verificarPago(pago);
         PagoServicio actualizado = pagoServicioRepository.findByUpc(pago.getUpc()).orElse(pago);
-        return PagoResponse.desde(actualizado, "Verificación con el proveedor: " + resultado);
+        CatalogoProductoPuntoRed producto = actualizado.getIdProducto() != null
+                ? catalogoProductoRepository.findByIdProducto(actualizado.getIdProducto()).orElse(null)
+                : null;
+        return PagoResponse.desde(actualizado, "Verificación con el proveedor: " + resultado, producto);
     }
 
     Resultado verificarPago(PagoServicio pago) {
@@ -143,7 +175,10 @@ public class VerificacionPagosServiceImpl implements VerificacionPagosService {
     }
 
     private Resultado liquidar(PagoServicio pago, PuntoRedTxResponse respuesta) {
-        pagoTransaccionalService.aplicarExito(pago.getId(), pago.getNumeroCuenta(), pago.getMonto(), respuesta);
+        PagoServicio liquidado = pagoTransaccionalService.aplicarExito(pago.getId(), pago.getNumeroCuenta(), pago.getMonto(), respuesta);
+        if (ticketCorreoService != null) {
+            ticketCorreoService.enviarComprobantePorCurp(liquidado != null ? liquidado : pago);
+        }
         log.info("Verificación: pago aplicado por el proveedor, saldo liquidado [upc: {}]", pago.getUpc());
         return Resultado.LIQUIDADO;
     }

@@ -10,6 +10,7 @@ import com.kapm.onboarding_clientes.dto.request.SolicitarCodigoPagoRequest;
 import com.kapm.onboarding_clientes.dto.request.ValidarCodigo2FARequest;
 import com.kapm.onboarding_clientes.dto.response.ClienteResponse;
 import com.kapm.onboarding_clientes.dto.response.CodigoVerificacionResponse;
+import com.kapm.onboarding_clientes.dto.response.ConfigurarGoogle2FAResponse;
 import com.kapm.onboarding_clientes.dto.response.PagoResponse;
 import com.kapm.onboarding_clientes.dto.response.SolicitarCodigoPagoResponse;
 import com.kapm.onboarding_clientes.entity.EstatusCuenta;
@@ -170,10 +171,26 @@ public class PagoServicioServiceImpl implements PagoServicioService {
                 request.getMonto()
         );
 
-        if (google2FAService != null && google2FAService.estaHabilitado(username)) {
+        if (google2FAService != null) {
+            if (google2FAService.estaHabilitado(username)) {
+                return SolicitarCodigoPagoResponse.builder()
+                        .mensaje("Ingresa el código de 6 dígitos de Google Authenticator para autorizar tu pago")
+                        .metodo2fa(Google2FAService.METODO_GOOGLE)
+                        .requiereConfiguracion2fa(false)
+                        .numeroCuenta(request.getNumeroCuenta().trim())
+                        .idProducto(request.getIdProducto())
+                        .idServicio(request.getIdServicio())
+                        .monto(op.monto())
+                        .build();
+            }
+            ConfigurarGoogle2FAResponse setup = google2FAService.iniciarOContinuarConfiguracion(username);
             return SolicitarCodigoPagoResponse.builder()
-                    .mensaje("Ingresa el código de 6 dígitos de Google Authenticator para autorizar tu pago")
+                    .mensaje("Escanea el código QR en Google Authenticator e ingresa el código de 6 dígitos para autorizar tu pago")
                     .metodo2fa(Google2FAService.METODO_GOOGLE)
+                    .requiereConfiguracion2fa(true)
+                    .secreto2fa(setup.getSecreto())
+                    .otpauthUri2fa(setup.getOtpauthUri())
+                    .qrCodeDataUrl(setup.getQrCodeDataUrl())
                     .numeroCuenta(request.getNumeroCuenta().trim())
                     .idProducto(request.getIdProducto())
                     .idServicio(request.getIdServicio())
@@ -243,8 +260,8 @@ public class PagoServicioServiceImpl implements PagoServicioService {
             throw new ReglaNegocioException(ErrorMessage.CODIGO_2FA_INVALIDO);
         }
 
-        if (google2FAService != null && google2FAService.estaHabilitado(username)) {
-            google2FAService.validarCodigoActivo(username, request.getCodigo().trim());
+        if (google2FAService != null) {
+            google2FAService.validarOActivar(username, request.getCodigo().trim());
         } else {
             ValidarCodigo2FARequest validarReq = ValidarCodigo2FARequest.builder()
                     .numeroCuenta(request.getNumeroCuenta().trim())

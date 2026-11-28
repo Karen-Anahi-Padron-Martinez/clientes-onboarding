@@ -10,6 +10,7 @@ import com.kapm.onboarding_clientes.dto.request.DomicilioDTO;
 import com.kapm.onboarding_clientes.repository.ClienteRepository;
 import com.kapm.onboarding_clientes.repository.CodigoAccesoRepository;
 import com.kapm.onboarding_clientes.service.ClienteService;
+import com.kapm.onboarding_clientes.service.TotpService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +26,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -63,11 +65,16 @@ class AuthSeguridadIT {
     @Autowired private ClienteService clienteService;
     @Autowired private ClienteRepository clienteRepository;
     @Autowired private CodigoAccesoRepository codigoAccesoRepository;
+    @Autowired private TotpService totpService;
 
     @MockitoBean private BrevoEmailClient brevoEmailClient;
+    private String secretoTotpActual;
+    private int desplazamientoPasoTotp;
 
     @BeforeEach
     void crearCliente() {
+        secretoTotpActual = null;
+        desplazamientoPasoTotp = 0;
         // Sin biometría ni empresa: ambos son opcionales en el registro
         clienteService.registrarCliente(ClienteRegistrationRequest.builder()
                 .nombre("Karla").apellidoPaterno("López").apellidoMaterno("Arias")
@@ -103,15 +110,29 @@ class AuthSeguridadIT {
         return m.group(1);
     }
 
+    private String siguienteCodigoTotp() {
+        long paso = Math.floorDiv(Instant.now().getEpochSecond(), 30) + desplazamientoPasoTotp;
+        desplazamientoPasoTotp++;
+        return totpService.calcularCodigo(secretoTotpActual, paso);
+    }
+
     private String login(String password) throws Exception {
-        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+        String desafioJson = mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("username", USUARIO, "password", password))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.datos.requiereCodigo").value(true))
-                .andExpect(jsonPath("$.datos.accessToken").doesNotExist());
+                .andExpect(jsonPath("$.datos.metodo2fa").value("GOOGLE_AUTHENTICATOR"))
+                .andExpect(jsonPath("$.datos.accessToken").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode desafio = objectMapper.readTree(desafioJson).path("datos");
+        if (desafio.hasNonNull("secreto2fa")) {
+            secretoTotpActual = desafio.path("secreto2fa").asText();
+        }
+        // Login usa Google Authenticator y nunca envía correo
+        verify(brevoEmailClient, never()).enviarCorreo(anyString(), anyString(), anyString());
 
         String respuesta = mockMvc.perform(post("/api/auth/login/verificar").contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("username", USUARIO, "codigo", ultimoCodigoEnviado()))))
+                        .content(json(Map.of("username", USUARIO, "codigo", siguienteCodigoTotp()))))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         JsonNode datos = objectMapper.readTree(respuesta).path("datos");
@@ -136,12 +157,16 @@ class AuthSeguridadIT {
     }
 
     @Test
-    @DisplayName("Código incorrecto no emite token; el código es de un solo uso")
+    @DisplayName("Código incorrecto no emite token; el código de Google Authenticator es de un solo uso")
     void codigoIncorrectoYReuso() throws Exception {
-        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+        String desafioJson = mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("username", USUARIO, "password", PASSWORD))))
-                .andExpect(status().isOk());
-        String codigo = ultimoCodigoEnviado();
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.datos.requiereConfiguracion2fa").value(true))
+                .andExpect(jsonPath("$.datos.qrCodeDataUrl").isString())
+                .andReturn().getResponse().getContentAsString();
+        secretoTotpActual = objectMapper.readTree(desafioJson).path("datos").path("secreto2fa").asText();
+        String codigo = siguienteCodigoTotp();
         String incorrecto = codigo.equals("000000") ? "111111" : "000000";
 
         mockMvc.perform(post("/api/auth/login/verificar").contentType(MediaType.APPLICATION_JSON)
@@ -206,6 +231,7 @@ class AuthSeguridadIT {
         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("username", USUARIO, "password", PASSWORD))))
                 .andExpect(status().isBadRequest());
+        clearInvocations(brevoEmailClient);
         assertThat(login("OtraSegura#2026")).isNotBlank();
     }
 

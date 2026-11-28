@@ -108,9 +108,6 @@ public class TicketCorreoService {
         if (pago.getNumAutorizacion() != null && !pago.getNumAutorizacion().isBlank()) {
             agregarFila(filas, "Autorización", escapeHtml(pago.getNumAutorizacion()), true);
         }
-        if (pago.getIdTxProveedor() != null && !pago.getIdTxProveedor().isBlank()) {
-            agregarFila(filas, "ID de transacción", escapeHtml(pago.getIdTxProveedor()), true);
-        }
         agregarFila(filas, "Servicio", escapeHtml(nombreProducto), true);
         if (referencia != null && !referencia.isBlank()) {
             agregarFila(filas, "Referencia", escapeHtml(referencia), true);

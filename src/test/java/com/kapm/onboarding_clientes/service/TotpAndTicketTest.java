@@ -146,6 +146,7 @@ class TotpAndTicketTest {
         assertThat(html).contains("$100.00 MXN");
         assertThat(html).contains("Recibe soporte las 24h marcando al *787. Conserva tu comprobante de pago.");
         assertThat(html).doesNotContainIgnoringCase("Comisión");
+        assertThat(html).doesNotContainIgnoringCase("ID de transacción");
     }
 
     @Test

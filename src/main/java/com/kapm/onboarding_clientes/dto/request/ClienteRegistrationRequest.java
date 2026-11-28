@@ -20,7 +20,7 @@ public class ClienteRegistrationRequest {
 
     // Datos Personales
     @NotBlank(message = ValidationMessages.CLIENTE_NOMBRE_OBLIGATORIO)
-    @Size(min = 2, max = 50, message = ValidationMessages.CLIENTE_NOMBRE_SIZE)
+    @Size(min = 3, max = 50, message = ValidationMessages.CLIENTE_NOMBRE_SIZE)
     @Pattern(regexp = "^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$", message = ValidationMessages.CLIENTE_NOMBRE_PATTERN)
     @Schema(description = "Primer nombre del cliente", example = "Carlos")
     private String nombre;
@@ -31,13 +31,13 @@ public class ClienteRegistrationRequest {
     private String segundoNombre;
 
     @NotBlank(message = ValidationMessages.CLIENTE_APELLIDO_PATERNO_OBLIGATORIO)
-    @Size(min = 2, max = 50, message = ValidationMessages.CLIENTE_APELLIDO_PATERNO_SIZE)
+    @Size(min = 3, max = 50, message = ValidationMessages.CLIENTE_APELLIDO_PATERNO_SIZE)
     @Pattern(regexp = "^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$", message = ValidationMessages.CLIENTE_APELLIDO_PATERNO_PATTERN)
     @Schema(description = "Apellido paterno", example = "Mendoza")
     private String apellidoPaterno;
 
     @NotBlank(message = ValidationMessages.CLIENTE_APELLIDO_MATERNO_OBLIGATORIO)
-    @Size(min = 2, max = 50, message = ValidationMessages.CLIENTE_APELLIDO_MATERNO_SIZE)
+    @Size(min = 3, max = 50, message = ValidationMessages.CLIENTE_APELLIDO_MATERNO_SIZE)
     @Pattern(regexp = "^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$", message = ValidationMessages.CLIENTE_APELLIDO_MATERNO_PATTERN)
     @Schema(description = "Apellido materno", example = "Hernández")
     private String apellidoMaterno;

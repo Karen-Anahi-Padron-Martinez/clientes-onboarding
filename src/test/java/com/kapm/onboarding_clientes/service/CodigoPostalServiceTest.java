@@ -25,7 +25,10 @@ class CodigoPostalServiceTest {
             "20010|Ramon Romo Franco|Colonia|Aguascalientes|Aguascalientes|Aguascalientes|20001|01|20001||09|001|0001|Urbano|01",
             "20010|Colinas del Rio|Colonia|Aguascalientes|Aguascalientes|Aguascalientes|20001|01|20001||09|001|0002|Urbano|01",
             "20900|Centro|Colonia|Jesús María|Aguascalientes|Jesús María|20900|01|20900||09|005|0001|Urbano|01",
-            "25000|Zona Centro|Colonia|Saltillo|Coahuila de Zaragoza|Saltillo|25001|05|25001||09|030|0001|Urbano|01");
+            "25000|Zona Centro|Colonia|Saltillo|Coahuila de Zaragoza|Saltillo|25001|05|25001||09|030|0001|Urbano|01",
+            "37800|Centro Dolores Hidalgo|Colonia|Dolores Hidalgo Cuna de la Independencia Nacional|Guanajuato|Dolores Hidalgo Cuna de la Independencia Nacional|37801|11|37801||09|014|1951|Urbano|39",
+            "37803|Lázaro Cárdenas|Colonia|Dolores Hidalgo Cuna de la Independencia Nacional|Guanajuato|Dolores Hidalgo Cuna de la Independencia Nacional|37801|11|37801||09|014|0026|Urbano|39",
+            "37804|Compositores|Colonia|Dolores Hidalgo Cuna de la Independencia Nacional|Guanajuato|Dolores Hidalgo Cuna de la Independencia Nacional|37801|11|37801||09|014|0019|Urbano|39");
 
     @TempDir
     Path dir;
@@ -63,6 +66,20 @@ class CodigoPostalServiceTest {
         assertThat(s.municipiosPorEstado("ciudad_de_mexico")).containsExactly("Cuauhtémoc");
         assertThat(s.municipiosPorEstado("INEXISTENTE")).isEmpty();
         assertThat(s.municipiosPorEstado("")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Al consultar 37800 incluye Centro Dolores Hidalgo primero y el resto de colonias de Dolores Hidalgo")
+    void coloniasDeDoloresHidalgoConCp37800() throws Exception {
+        CodigoPostalService s = servicio();
+        CodigoPostalResponse r = s.consultar("37800");
+        assertThat(r.getEstado()).isEqualTo("GUANAJUATO");
+        assertThat(r.getMunicipio()).isEqualTo("Dolores Hidalgo Cuna de la Independencia Nacional");
+        assertThat(r.getColonias()).containsExactly("Centro Dolores Hidalgo", "Compositores", "Lázaro Cárdenas");
+
+        assertThat(s.coloniasPorMunicipio("GUANAJUATO", "Dolores Hidalgo Cuna de la Independencia Nacional"))
+                .containsExactly("Centro Dolores Hidalgo", "Compositores", "Lázaro Cárdenas");
+        assertThat(s.coloniasPorMunicipio("", "Dolores Hidalgo")).isEmpty();
     }
 
     @Test

@@ -23,8 +23,8 @@ import com.kapm.onboarding_clientes.repository.PagoServicioRepository;
 import com.kapm.onboarding_clientes.repository.SaldoRepository;
 import com.kapm.onboarding_clientes.util.ReferenciaUtil;
 import com.kapm.onboarding_clientes.validation.CurpRfcUtil;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +38,6 @@ import java.util.Optional;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PagoServicioServiceImpl implements PagoServicioService {
 
     private static final DateTimeFormatter FORMATTER_HORA_LOCAL = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
@@ -51,6 +50,45 @@ public class PagoServicioServiceImpl implements PagoServicioService {
     private final SaldoRepository saldoRepository;
     private final CodigoVerificacionService codigoVerificacionService;
     private final PagoTransaccionalService pagoTransaccionalService;
+    private final Google2FAService google2FAService;
+    private final TicketCorreoService ticketCorreoService;
+
+    @Autowired
+    public PagoServicioServiceImpl(
+            PagoServicioRepository pagoServicioRepository,
+            CatalogoProductoPuntoRedRepository catalogoProductoRepository,
+            PuntoRedProperties puntoRedProperties,
+            PuntoRedClient puntoRedClient,
+            ClienteService clienteService,
+            SaldoRepository saldoRepository,
+            CodigoVerificacionService codigoVerificacionService,
+            PagoTransaccionalService pagoTransaccionalService,
+            Google2FAService google2FAService,
+            TicketCorreoService ticketCorreoService) {
+        this.pagoServicioRepository = pagoServicioRepository;
+        this.catalogoProductoRepository = catalogoProductoRepository;
+        this.puntoRedProperties = puntoRedProperties;
+        this.puntoRedClient = puntoRedClient;
+        this.clienteService = clienteService;
+        this.saldoRepository = saldoRepository;
+        this.codigoVerificacionService = codigoVerificacionService;
+        this.pagoTransaccionalService = pagoTransaccionalService;
+        this.google2FAService = google2FAService;
+        this.ticketCorreoService = ticketCorreoService;
+    }
+
+    public PagoServicioServiceImpl(
+            PagoServicioRepository pagoServicioRepository,
+            CatalogoProductoPuntoRedRepository catalogoProductoRepository,
+            PuntoRedProperties puntoRedProperties,
+            PuntoRedClient puntoRedClient,
+            ClienteService clienteService,
+            SaldoRepository saldoRepository,
+            CodigoVerificacionService codigoVerificacionService,
+            PagoTransaccionalService pagoTransaccionalService) {
+        this(pagoServicioRepository, catalogoProductoRepository, puntoRedProperties, puntoRedClient,
+                clienteService, saldoRepository, codigoVerificacionService, pagoTransaccionalService, null, null);
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -132,6 +170,17 @@ public class PagoServicioServiceImpl implements PagoServicioService {
                 request.getMonto()
         );
 
+        if (google2FAService != null && google2FAService.estaHabilitado(username)) {
+            return SolicitarCodigoPagoResponse.builder()
+                    .mensaje("Ingresa el código de 6 dígitos de Google Authenticator para autorizar tu pago")
+                    .metodo2fa(Google2FAService.METODO_GOOGLE)
+                    .numeroCuenta(request.getNumeroCuenta().trim())
+                    .idProducto(request.getIdProducto())
+                    .idServicio(request.getIdServicio())
+                    .monto(op.monto())
+                    .build();
+        }
+
         EmitirCodigo2FARequest emitirReq = EmitirCodigo2FARequest.builder()
                 .numeroCuenta(request.getNumeroCuenta().trim())
                 .curp(op.cliente().getCurp())
@@ -146,6 +195,7 @@ public class PagoServicioServiceImpl implements PagoServicioService {
 
         return SolicitarCodigoPagoResponse.builder()
                 .mensaje("Código de verificación enviado al correo registrado")
+                .metodo2fa(Google2FAService.METODO_CORREO)
                 .correoEnmascarado(codigoResp.getCorreoEnmascarado())
                 .numeroCuenta(request.getNumeroCuenta().trim())
                 .idProducto(request.getIdProducto())
@@ -188,23 +238,27 @@ public class PagoServicioServiceImpl implements PagoServicioService {
                 request.getMonto()
         );
 
-        // 2. Validar el código 2FA
+        // 2. Validar el código 2FA (Google Authenticator si está activo, de lo contrario correo)
         if (request.getCodigo() == null || !request.getCodigo().trim().matches("^\\d{6}$")) {
             throw new ReglaNegocioException(ErrorMessage.CODIGO_2FA_INVALIDO);
         }
 
-        ValidarCodigo2FARequest validarReq = ValidarCodigo2FARequest.builder()
-                .numeroCuenta(request.getNumeroCuenta().trim())
-                .curp(op.cliente().getCurp())
-                .codigo(request.getCodigo().trim())
-                .idProducto(request.getIdProducto())
-                .idServicio(request.getIdServicio())
-                .telefono(op.telefono())
-                .referencia(op.referencia())
-                .monto(op.monto())
-                .build();
+        if (google2FAService != null && google2FAService.estaHabilitado(username)) {
+            google2FAService.validarCodigoActivo(username, request.getCodigo().trim());
+        } else {
+            ValidarCodigo2FARequest validarReq = ValidarCodigo2FARequest.builder()
+                    .numeroCuenta(request.getNumeroCuenta().trim())
+                    .curp(op.cliente().getCurp())
+                    .codigo(request.getCodigo().trim())
+                    .idProducto(request.getIdProducto())
+                    .idServicio(request.getIdServicio())
+                    .telefono(op.telefono())
+                    .referencia(op.referencia())
+                    .monto(op.monto())
+                    .build();
 
-        codigoVerificacionService.validarCodigo(validarReq);
+            codigoVerificacionService.validarCodigo(validarReq);
+        }
 
         // 3. Pre-verificar que el proveedor está disponible (token en caché o renovado) ANTES de reservar saldo.
         // Si falla aquí, la transacción nunca se envió: se responde 503 sin tocar el saldo del cliente.
@@ -266,6 +320,9 @@ public class PagoServicioServiceImpl implements PagoServicioService {
                     pagoPendiente.getMonto(),
                     txResponse
             );
+            if (ticketCorreoService != null) {
+                ticketCorreoService.enviarComprobante(pagoExitoso, op.cliente().getCorreo(), op.cliente().getNombre(), op.producto());
+            }
             return mapearAPagoResponse(pagoExitoso, "Pago procesado exitosamente por PuntoRed");
 
         } catch (PuntoRedRechazoException e) {

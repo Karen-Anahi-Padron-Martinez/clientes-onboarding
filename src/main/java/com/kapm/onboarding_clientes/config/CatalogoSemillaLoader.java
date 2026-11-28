@@ -81,11 +81,27 @@ public class CatalogoSemillaLoader implements ApplicationRunner {
         }
 
         int insertados = 0;
+        int leyendasActualizadas = 0;
         for (ProductoSemilla p : semilla) {
             Integer idProducto = entero(p.idProducto());
             Integer idServicio = entero(p.idServicio());
             Integer tipoFront = entero(p.tipoFront());
-            if (idProducto == null || idServicio == null || tipoFront == null || catalogoRepository.existsByIdProducto(idProducto)) {
+            if (idProducto == null || idServicio == null || tipoFront == null) {
+                continue;
+            }
+            if (catalogoRepository.existsByIdProducto(idProducto)) {
+                String leyenda = descripcion(p.legend());
+                if (leyenda != null) {
+                    var existenteOpt = catalogoRepository.findByIdProducto(idProducto);
+                    if (existenteOpt.isPresent()) {
+                        CatalogoProductoPuntoRed existente = existenteOpt.get();
+                        if (existente.getDescripcion() == null || existente.getDescripcion().isBlank()) {
+                            existente.setDescripcion(leyenda);
+                            catalogoRepository.save(existente);
+                            leyendasActualizadas++;
+                        }
+                    }
+                }
                 continue;
             }
             catalogoRepository.save(aEntidad(p, idProducto, idServicio, tipoFront));
@@ -93,6 +109,9 @@ public class CatalogoSemillaLoader implements ApplicationRunner {
         }
         if (insertados > 0) {
             log.info("Semilla del catálogo: {} productos insertados", insertados);
+        }
+        if (leyendasActualizadas > 0) {
+            log.info("Semilla del catálogo: leyenda completada en {} productos existentes", leyendasActualizadas);
         }
         asignarLogos();
     }

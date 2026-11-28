@@ -158,6 +158,8 @@ public class PerfilClienteServiceImpl implements PerfilClienteService {
                 .estatusCuenta(cliente.getCuenta() != null && cliente.getCuenta().getEstatus() != null
                         ? cliente.getCuenta().getEstatus().name() : null)
                 .fechaRegistro(cliente.getFechaRegistro())
+                .google2faHabilitado(cliente.getDatosSeguridad() != null
+                        && Boolean.TRUE.equals(cliente.getDatosSeguridad().getTotpHabilitado()))
                 .datosEditables(ActualizarPerfilRequest.builder()
                         .nombre(cliente.getNombre())
                         .segundoNombre(cliente.getSegundoNombre())

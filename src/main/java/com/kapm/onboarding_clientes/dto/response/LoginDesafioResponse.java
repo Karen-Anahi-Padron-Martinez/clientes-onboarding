@@ -16,6 +16,8 @@ public class LoginDesafioResponse {
 
     private boolean requiereCodigo;
     private String username;
+    @Schema(example = "GOOGLE_AUTHENTICATOR", description = "Método 2FA requerido: CORREO o GOOGLE_AUTHENTICATOR")
+    private String metodo2fa;
     @Schema(example = "c***@email.com")
     private String correoEnmascarado;
     private LocalDateTime codigoExpiraEn;

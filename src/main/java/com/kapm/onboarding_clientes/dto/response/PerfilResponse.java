@@ -33,6 +33,7 @@ public class PerfilResponse {
     private String numeroCuenta;
     private String estatusCuenta;
     private LocalDateTime fechaRegistro;
+    private Boolean google2faHabilitado;
 
     /** Valores actuales con los códigos de catálogo, listos para precargar el formulario de edición. */
     private ActualizarPerfilRequest datosEditables;

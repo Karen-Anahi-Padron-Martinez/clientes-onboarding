@@ -184,7 +184,10 @@ public class VerificacionPagosServiceImpl implements VerificacionPagosService {
     }
 
     private Resultado liberar(PagoServicio pago, String codigo, String texto) {
-        pagoTransaccionalService.aplicarRechazo(pago.getId(), pago.getNumeroCuenta(), pago.getMonto(), codigo, texto);
+        PagoServicio rechazado = pagoTransaccionalService.aplicarRechazo(pago.getId(), pago.getNumeroCuenta(), pago.getMonto(), codigo, texto);
+        if (ticketCorreoService != null) {
+            ticketCorreoService.enviarComprobantePorCurp(rechazado != null ? rechazado : pago);
+        }
         log.info("Verificación: el proveedor no aplicó el pago, reserva liberada [upc: {}, codigo: {}]", pago.getUpc(), codigo);
         return Resultado.LIBERADO;
     }

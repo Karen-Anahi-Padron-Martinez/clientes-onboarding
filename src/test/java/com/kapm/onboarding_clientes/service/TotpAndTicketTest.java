@@ -147,4 +147,39 @@ class TotpAndTicketTest {
         assertThat(html).contains("Recibe soporte las 24h marcando al *787. Conserva tu comprobante de pago.");
         assertThat(html).doesNotContainIgnoringCase("Comisión");
     }
+
+    @Test
+    @DisplayName("TicketCorreoService también envía comprobante HTML cuando el pago es RECHAZADO")
+    void ticketCorreoPagoRechazado() {
+        BrevoEmailClient brevo = mock(BrevoEmailClient.class);
+        TicketCorreoService service = new TicketCorreoService(
+                brevo, mock(ClienteRepository.class), mock(CatalogoProductoPuntoRedRepository.class));
+
+        PagoServicio pago = PagoServicio.builder()
+                .upc("UPCRECH01")
+                .numeroCuenta("4819204812")
+                .telefono("5512345678")
+                .monto(new BigDecimal("100.00"))
+                .estatus(EstatusPago.RECHAZADO)
+                .textoRespuesta("OPERACION RECHAZADA")
+                .fechaCreacion(LocalDateTime.of(2026, 11, 27, 18, 45, 0))
+                .build();
+
+        CatalogoProductoPuntoRed producto = CatalogoProductoPuntoRed.builder()
+                .nombreProducto("Telcel 100")
+                .descripcion("Conserva tu comprobante.")
+                .build();
+
+        service.enviarComprobante(pago, "karen@test.com", "Karen", producto);
+
+        ArgumentCaptor<String> asuntoCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> htmlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(brevo).enviarCorreo(eq("karen@test.com"), asuntoCaptor.capture(), htmlCaptor.capture());
+
+        assertThat(asuntoCaptor.getValue()).containsIgnoringCase("rechazado");
+        assertThat(htmlCaptor.getValue()).contains("RECHAZADO");
+        assertThat(htmlCaptor.getValue()).contains("No se realizó ningún cargo");
+        assertThat(htmlCaptor.getValue()).contains("Conserva tu comprobante.");
+        assertThat(htmlCaptor.getValue()).doesNotContainIgnoringCase("Comisión");
+    }
 }

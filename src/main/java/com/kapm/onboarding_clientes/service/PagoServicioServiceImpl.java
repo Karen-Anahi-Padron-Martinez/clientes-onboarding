@@ -347,6 +347,9 @@ public class PagoServicioServiceImpl implements PagoServicioService {
                 pagoRechazado.setNumAutorizacion(e.getNumAutorizacion().trim());
                 pagoServicioRepository.save(pagoRechazado);
             }
+            if (ticketCorreoService != null && pagoRechazado != null) {
+                ticketCorreoService.enviarComprobante(pagoRechazado, op.cliente().getCorreo(), op.cliente().getNombre(), op.producto());
+            }
             return mapearAPagoResponse(pagoRechazado, ErrorMessage.PUNTORED_TRANSACCION_RECHAZADA.getMensaje());
 
         } catch (Exception e) {

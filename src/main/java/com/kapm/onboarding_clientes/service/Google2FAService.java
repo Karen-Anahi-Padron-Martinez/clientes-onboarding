@@ -42,20 +42,35 @@ public class Google2FAService {
 
     @Transactional
     public ConfigurarGoogle2FAResponse iniciarConfiguracion(String username) {
-        DatosSeguridadBiometria seguridad = buscarSeguridad(username);
-        String cuenta = clienteRepository.findByDatosSeguridadUsername(username.trim())
+        return generarRespuestaConfiguracion(buscarSeguridad(username), true);
+    }
+
+    /**
+     * Reutiliza el secreto pendiente si el usuario aún no completa la vinculación (evita invalidar un QR recién escaneado).
+     */
+    @Transactional
+    public ConfigurarGoogle2FAResponse iniciarOContinuarConfiguracion(String username) {
+        return generarRespuestaConfiguracion(buscarSeguridad(username), false);
+    }
+
+    private ConfigurarGoogle2FAResponse generarRespuestaConfiguracion(DatosSeguridadBiometria seguridad, boolean regenerar) {
+        String cuenta = clienteRepository.findByDatosSeguridadUsername(seguridad.getUsername())
                 .map(Cliente::getCorreo)
                 .filter(c -> c != null && !c.isBlank())
                 .orElse(seguridad.getUsername());
 
-        String secreto = totpService.generarSecretoBase32();
-        seguridad.setTotpSecretPendiente(secreto);
-        seguridadRepository.save(seguridad);
+        String secreto = (!regenerar && seguridad.getTotpSecretPendiente() != null && !seguridad.getTotpSecretPendiente().isBlank())
+                ? seguridad.getTotpSecretPendiente()
+                : totpService.generarSecretoBase32();
+        if (!secreto.equals(seguridad.getTotpSecretPendiente())) {
+            seguridad.setTotpSecretPendiente(secreto);
+            seguridadRepository.save(seguridad);
+        }
 
         String uri = totpService.construirOtpAuthUri(TotpService.EMISOR_DEFAULT, cuenta, secreto);
         String qr = totpService.generarQrDataUrl(uri);
 
-        log.info("Configuración pendiente de Google Authenticator iniciada para usuario autenticado");
+        log.info("Configuración de Google Authenticator lista para usuario");
         return ConfigurarGoogle2FAResponse.builder()
                 .habilitado(Boolean.TRUE.equals(seguridad.getTotpHabilitado()))
                 .secreto(secreto)
@@ -64,6 +79,18 @@ public class Google2FAService {
                 .emisor(TotpService.EMISOR_DEFAULT)
                 .cuenta(cuenta)
                 .build();
+    }
+
+    /**
+     * Si el usuario ya vinculó Google Authenticator valida su código activo; si es su primera vez, activa la vinculación.
+     */
+    @Transactional
+    public void validarOActivar(String username, String codigo) {
+        if (estaHabilitado(username)) {
+            validarCodigoActivo(username, codigo);
+        } else {
+            activar(username, codigo);
+        }
     }
 
     @Transactional

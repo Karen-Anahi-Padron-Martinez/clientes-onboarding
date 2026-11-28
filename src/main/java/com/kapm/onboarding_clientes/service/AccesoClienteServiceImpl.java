@@ -5,6 +5,7 @@ import com.kapm.onboarding_clientes.dto.request.RestablecerPasswordRequest;
 import com.kapm.onboarding_clientes.dto.request.SolicitarRecuperacionRequest;
 import com.kapm.onboarding_clientes.dto.request.VerificarLoginRequest;
 import com.kapm.onboarding_clientes.dto.response.CodigoVerificacionResponse;
+import com.kapm.onboarding_clientes.dto.response.ConfigurarGoogle2FAResponse;
 import com.kapm.onboarding_clientes.dto.response.LoginDesafioResponse;
 import com.kapm.onboarding_clientes.dto.response.LoginResponse;
 import com.kapm.onboarding_clientes.entity.Cliente;
@@ -43,12 +44,26 @@ public class AccesoClienteServiceImpl implements AccesoClienteService {
             throw new ReglaNegocioException(ErrorMessage.AUTH_SIN_CORREO_2FA);
         }
         String username = request.getUsername().trim();
-        if (google2FAService != null && google2FAService.estaHabilitado(username)) {
+        if (google2FAService != null) {
+            if (google2FAService.estaHabilitado(username)) {
+                return LoginDesafioResponse.builder()
+                        .requiereCodigo(true)
+                        .username(username)
+                        .metodo2fa(Google2FAService.METODO_GOOGLE)
+                        .requiereConfiguracion2fa(false)
+                        .mensaje("Ingresa el código de 6 dígitos de tu app Google Authenticator")
+                        .build();
+            }
+            ConfigurarGoogle2FAResponse setup = google2FAService.iniciarOContinuarConfiguracion(username);
             return LoginDesafioResponse.builder()
                     .requiereCodigo(true)
                     .username(username)
                     .metodo2fa(Google2FAService.METODO_GOOGLE)
-                    .mensaje("Ingresa el código de 6 dígitos de tu app Google Authenticator")
+                    .requiereConfiguracion2fa(true)
+                    .secreto2fa(setup.getSecreto())
+                    .otpauthUri2fa(setup.getOtpauthUri())
+                    .qrCodeDataUrl(setup.getQrCodeDataUrl())
+                    .mensaje("Vincula Google Authenticator escaneando el código QR e ingresa el código de 6 dígitos")
                     .build();
         }
         CodigoVerificacionResponse envio = codigoAccesoService.emitir(username, cliente, PropositoCodigoAcceso.LOGIN);
@@ -66,8 +81,8 @@ public class AccesoClienteServiceImpl implements AccesoClienteService {
     @Override
     public LoginResponse verificarLogin(VerificarLoginRequest request) {
         String username = request.getUsername().trim();
-        if (google2FAService != null && google2FAService.estaHabilitado(username)) {
-            google2FAService.validarCodigoActivo(username, request.getCodigo());
+        if (google2FAService != null) {
+            google2FAService.validarOActivar(username, request.getCodigo());
         } else {
             codigoAccesoService.validar(username, PropositoCodigoAcceso.LOGIN, request.getCodigo());
         }

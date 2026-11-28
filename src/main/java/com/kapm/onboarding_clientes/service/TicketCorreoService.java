@@ -2,6 +2,7 @@ package com.kapm.onboarding_clientes.service;
 
 import com.kapm.onboarding_clientes.client.brevo.BrevoEmailClient;
 import com.kapm.onboarding_clientes.entity.Cliente;
+import com.kapm.onboarding_clientes.entity.EstatusPago;
 import com.kapm.onboarding_clientes.entity.PagoServicio;
 import com.kapm.onboarding_clientes.entity.catalogo.CatalogoProductoPuntoRed;
 import com.kapm.onboarding_clientes.repository.CatalogoProductoPuntoRedRepository;
@@ -45,10 +46,12 @@ public class TicketCorreoService {
             String servicio = prod != null && prod.getNombreProducto() != null
                     ? prod.getNombreProducto()
                     : (prod != null && prod.getNombreServicio() != null ? prod.getNombreServicio() : "Servicio");
-            String asunto = "Comprobante de pago " + servicio + " (Folio " + valorSeguro(pago.getUpc()) + ") - GestoPago";
+            boolean rechazado = pago.getEstatus() == EstatusPago.RECHAZADO || pago.getEstatus() == EstatusPago.REVERSADO;
+            String prefijoAsunto = rechazado ? "Comprobante de pago rechazado " : "Comprobante de pago ";
+            String asunto = prefijoAsunto + servicio + " (Folio " + valorSeguro(pago.getUpc()) + ") - GestoPago";
             String html = construirHtmlTicket(pago, nombreCliente, prod);
             brevoEmailClient.enviarCorreo(correo, asunto, html);
-            log.info("Comprobante de pago enviado por correo [upc: {}]", pago.getUpc());
+            log.info("Comprobante de pago ({}) enviado por correo [upc: {}]", pago.getEstatus(), pago.getUpc());
         } catch (Exception e) {
             log.warn("No se pudo enviar el comprobante por correo [upc: {}]: {}", pago.getUpc(), e.getMessage());
         }
@@ -90,9 +93,17 @@ public class TicketCorreoService {
                 ? producto.getDescripcion().trim()
                 : null;
 
+        boolean rechazado = pago.getEstatus() == EstatusPago.RECHAZADO || pago.getEstatus() == EstatusPago.REVERSADO;
+        String estatusTexto = pago.getEstatus() != null ? pago.getEstatus().name() : "EXITOSO";
+        String badgeBg = rechazado ? "#fee2e2" : "#dcfce7";
+        String badgeColor = rechazado ? "#991b1b" : "#166534";
+        String introTexto = rechazado
+                ? "tu operación fue rechazada por el proveedor. No se realizó ningún cargo a tu cuenta. Aquí tienes el ticket de tu transacción:"
+                : "tu operación se realizó con éxito. Aquí tienes el ticket de tu transacción:";
+
         StringBuilder filas = new StringBuilder();
-        agregarFila(filas, "Estado", "<span style='display:inline-block;background:#dcfce7;color:#166534;padding:2px 10px;border-radius:999px;font-weight:bold;font-size:12px;'>"
-                + escapeHtml(pago.getEstatus() != null ? pago.getEstatus().name() : "EXITOSO") + "</span>", true);
+        agregarFila(filas, "Estado", "<span style='display:inline-block;background:" + badgeBg + ";color:" + badgeColor + ";padding:2px 10px;border-radius:999px;font-weight:bold;font-size:12px;'>"
+                + escapeHtml(estatusTexto) + "</span>", true);
         agregarFila(filas, "Folio (UPC)", escapeHtml(valorSeguro(pago.getUpc())), true);
         if (pago.getNumAutorizacion() != null && !pago.getNumAutorizacion().isBlank()) {
             agregarFila(filas, "Autorización", escapeHtml(pago.getNumAutorizacion()), true);
@@ -121,7 +132,7 @@ public class TicketCorreoService {
         return "<div style='font-family:Arial,sans-serif;max-width:540px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:#ffffff;'>"
                 + "<h2 style='color:#1a365d;text-align:center;margin:0 0 8px 0;'>Comprobante de Pago</h2>"
                 + "<p style='text-align:center;color:#64748b;font-size:13px;margin:0 0 20px 0;'>GestoPago · Banco Digital</p>"
-                + "<p style='margin:0 0 16px 0;'>Hola <strong>" + escapeHtml(nombre) + "</strong>, tu operación se realizó con éxito. Aquí tienes el ticket de tu transacción:</p>"
+                + "<p style='margin:0 0 16px 0;'>Hola <strong>" + escapeHtml(nombre) + "</strong>, " + introTexto + "</p>"
                 + "<table style='width:100%;border-collapse:collapse;font-size:14px;'>"
                 + filas
                 + "</table>"
